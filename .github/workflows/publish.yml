@@ -84,7 +84,6 @@ jobs:
           path: dist/calendar.ics
           if-no-files-found: error
 
-  # Upload runs with only read scope and no persisted git credentials, so the write-scoped GITHUB_TOKEN is never present while wrangler (and its deps) run.
   upload:
     needs: publish
     runs-on: ubuntu-latest
