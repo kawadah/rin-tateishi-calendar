@@ -2,11 +2,11 @@
 # publishes the live .ics to Cloudflare R2.
 #
 # Required GitHub configuration (Settings -> Secrets and variables -> Actions):
-#   Secrets:   CLOUDFLARE_API_TOKEN   (scoped token with R2 read+write)
-#              CLOUDFLARE_ACCOUNT_ID
+#   Secrets:   CLOUDFLARE_ACCOUNT_ID (your Cloudflare account ID)
+#              CLOUDFLARE_R2_ACCESS_KEY_ID      (R2 S3-compatible access key)
+#              CLOUDFLARE_R2_SECRET_ACCESS_KEY  (R2 S3-compatible secret key)
 #   Variables: R2_BUCKET              (e.g. rin-tateishi-calendar)
 #              R2_OBJECT_KEY          (e.g. calendar.ics)
-# Subscribers point their calendar app at https://<your-custom-domain>/<R2_OBJECT_KEY>.
 name: Publish calendar
 
 on:
@@ -97,11 +97,6 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Set up toolchain (mise)
-        uses: jdx/mise-action@7e36c90d9ab29c415a2384db3006f3ec8a8cc654 # v4.2.4
-        with:
-          install_args: wrangler
-
       - name: Download .ics artifact
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
@@ -111,19 +106,21 @@ jobs:
       - name: Upload .ics to R2
         run: |
           set -euo pipefail
+          : "${AWS_ACCESS_KEY_ID:?set secret CLOUDFLARE_R2_ACCESS_KEY_ID}"
+          : "${AWS_SECRET_ACCESS_KEY:?set secret CLOUDFLARE_R2_SECRET_ACCESS_KEY}"
+          : "${CLOUDFLARE_ACCOUNT_ID:?set secret CLOUDFLARE_ACCOUNT_ID}"
           : "${R2_BUCKET:?set repo variable R2_BUCKET}"
           : "${R2_OBJECT_KEY:?set repo variable R2_OBJECT_KEY}"
-          : "${CLOUDFLARE_API_TOKEN:?set secret CLOUDFLARE_API_TOKEN}"
-          : "${CLOUDFLARE_ACCOUNT_ID:?set secret CLOUDFLARE_ACCOUNT_ID}"
-          target="${R2_BUCKET}/${R2_OBJECT_KEY}"
 
-          mise exec -- wrangler r2 object put "$target" \
-            --file dist/calendar.ics --remote \
-            --content-type "text/calendar; charset=utf-8" \
-            --cache-control "public, max-age=3600"
+          endpoint="https://${CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com"
+          target="s3://${R2_BUCKET}/${R2_OBJECT_KEY}"
+
+          aws s3 cp dist/calendar.ics "$target" --endpoint-url "$endpoint" --cache-control "public, max-age=3600" --content-type "text/calendar; charset=utf-8"
           echo "uploaded ${target}"
         env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.CLOUDFLARE_R2_ACCESS_KEY_ID }}
+          AWS_DEFAULT_REGION: auto
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.CLOUDFLARE_R2_SECRET_ACCESS_KEY }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           R2_BUCKET: ${{ vars.R2_BUCKET }}
           R2_OBJECT_KEY: ${{ vars.R2_OBJECT_KEY }}
