@@ -2,10 +2,10 @@
 //
 // It keeps every event observed and preserves records after they roll out of
 // the fetch window. On a normal run it upserts the fetched events (edits
-// overwrite) and hard-deletes archived events that are inside the current
-// window (date >= 1st of the current month) but absent from the fetch — a
-// genuine owner deletion. Records dated before the current month are outside
-// the window, so their absence proves nothing and they are left untouched.
+// overwrite) and hard-deletes archived events that are inside the fetched
+// window [from, to] but absent from the fetch — a genuine owner deletion.
+// Records dated outside that window (before or after) have their absence
+// treated as inconclusive and are left untouched.
 //
 // Serialization is deterministic (records sorted by date then UID, stable
 // field order, 2-space indent) so an unchanged archive yields no diff. Git
@@ -18,9 +18,9 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
-	"time"
 
 	"github.com/kawadah/rin-tateishi-calendar/internal/event"
+	"github.com/kawadah/rin-tateishi-calendar/internal/fetch"
 )
 
 // Record is one archived event.
@@ -118,17 +118,26 @@ func (s *Store) Save(archive map[string]Record) error {
 }
 
 // Merge applies a normal run to archive (mutated in place): upsert the fetched
-// events, then hard-delete in-window archived events absent from the fetch.
-func Merge(archive map[string]Record, events []event.Event, now time.Time) {
-	upsert(archive, events, dateOf(now))
+// events (edits overwrite), then hard-delete archived records inside the fetch
+// window [from, to] that are absent from the fetch (owner deletions). Records
+// outside the window are left untouched — their absence proves nothing. The
+// window is passed explicitly (not derived from a clock) so it matches exactly
+// what was fetched, and today (JST) is used for FirstSeen.
+func Merge(archive map[string]Record, events []event.Event, from, to fetch.Month, today event.Date) {
+	upsert(archive, events, today)
 
-	windowStart := event.Date{Year: now.Year(), Month: int(now.Month()), Day: 1}
+	windowStart := event.Date{Year: from.Year, Month: from.Month, Day: 1}
+	afterTo := to.Add(1)
+	windowEnd := event.Date{Year: afterTo.Year, Month: afterTo.Month, Day: 1} // exclusive
 	present := make(map[string]bool, len(events))
 	for _, e := range events {
 		present[e.UID] = true
 	}
 	for uid, rec := range archive {
-		if !present[uid] && rec.Date.Compare(windowStart) >= 0 {
+		if present[uid] {
+			continue
+		}
+		if rec.Date.Compare(windowStart) >= 0 && rec.Date.Compare(windowEnd) < 0 {
 			delete(archive, uid)
 		}
 	}
@@ -136,8 +145,8 @@ func Merge(archive map[string]Record, events []event.Event, now time.Time) {
 
 // Backfill additively seeds historical events into archive (mutated in place)
 // without deleting anything. Used for the one-time back-catalog seed.
-func Backfill(archive map[string]Record, events []event.Event, now time.Time) {
-	upsert(archive, events, dateOf(now))
+func Backfill(archive map[string]Record, events []event.Event, today event.Date) {
+	upsert(archive, events, today)
 }
 
 // upsert inserts new events and overwrites the title/date of existing ones,
@@ -164,7 +173,3 @@ func sortRecords(recs []Record) {
 }
 
 func monthKey(d event.Date) string { return fmt.Sprintf("%04d-%02d", d.Year, d.Month) }
-
-func dateOf(t time.Time) event.Date {
-	return event.Date{Year: t.Year(), Month: int(t.Month()), Day: t.Day()}
-}

@@ -14,6 +14,7 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+	_ "time/tzdata" // embed the tz database so Asia/Tokyo loads without system tzdata
 
 	"github.com/kawadah/rin-tateishi-calendar/internal/archive"
 	"github.com/kawadah/rin-tateishi-calendar/internal/config"
@@ -41,7 +42,14 @@ func run(backfill bool) error {
 	if err != nil {
 		return err
 	}
-	now := time.Now()
+	// The model is Asia/Tokyo calendar days; compute "now" there so the window
+	// and month rollover don't lag behind the JST-scheduled runs (runners are UTC).
+	jst, err := time.LoadLocation(cfg.Timezone)
+	if err != nil {
+		return fmt.Errorf("load timezone %q: %w", cfg.Timezone, err)
+	}
+	now := time.Now().In(jst)
+	today := event.Date{Year: now.Year(), Month: int(now.Month()), Day: now.Day()}
 	from, to := fetchRange(cfg, now, backfill)
 
 	client := fetch.New(cfg.MemberNo)
@@ -73,9 +81,9 @@ func run(backfill bool) error {
 		return fmt.Errorf("load archive: %w", err)
 	}
 	if backfill {
-		archive.Backfill(records, events, now)
+		archive.Backfill(records, events, today)
 	} else {
-		archive.Merge(records, events, now)
+		archive.Merge(records, events, from, to, today)
 	}
 	if err := store.Save(records); err != nil {
 		return fmt.Errorf("save archive: %w", err)

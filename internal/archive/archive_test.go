@@ -4,13 +4,18 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
-	"time"
 
 	"github.com/kawadah/rin-tateishi-calendar/internal/event"
+	"github.com/kawadah/rin-tateishi-calendar/internal/fetch"
 )
 
-// runNow is a fixed "now" mid-month; window start is 2026-08-01.
-var runNow = time.Date(2026, 8, 15, 12, 0, 0, 0, time.UTC)
+// Fixed fetch window and run date for merge tests: window 2026-08 .. 2027-08
+// (windowStart 2026-08-01, windowEnd exclusive 2027-09-01); today 2026-08-15.
+var (
+	winFrom = fetch.Month{Year: 2026, Month: 8}
+	winTo   = fetch.Month{Year: 2027, Month: 8}
+	today   = event.Date{Year: 2026, Month: 8, Day: 15}
+)
 
 func ev(y, m, d int, uid, title string) event.Event {
 	return event.Event{UID: uid, Date: event.Date{Year: y, Month: m, Day: d}, Title: title, AllDay: true}
@@ -20,7 +25,7 @@ func TestMergeUpsertAndEdit(t *testing.T) {
 	arc := map[string]Record{
 		"u9": {UID: "u9", Date: event.Date{Year: 2026, Month: 8, Day: 9}, Title: "old title", FirstSeen: event.Date{Year: 2026, Month: 8, Day: 1}},
 	}
-	Merge(arc, []event.Event{ev(2026, 8, 9, "u9", "new title")}, runNow)
+	Merge(arc, []event.Event{ev(2026, 8, 9, "u9", "new title")}, winFrom, winTo, today)
 
 	got, ok := arc["u9"]
 	if !ok {
@@ -36,7 +41,7 @@ func TestMergeUpsertAndEdit(t *testing.T) {
 
 func TestMergeAddsNewWithFirstSeenToday(t *testing.T) {
 	arc := map[string]Record{}
-	Merge(arc, []event.Event{ev(2026, 9, 2, "u", "e")}, runNow)
+	Merge(arc, []event.Event{ev(2026, 9, 2, "u", "e")}, winFrom, winTo, today)
 	if arc["u"].FirstSeen != (event.Date{Year: 2026, Month: 8, Day: 15}) {
 		t.Errorf("first_seen = %v, want today 2026-08-15", arc["u"].FirstSeen)
 	}
@@ -47,7 +52,7 @@ func TestMergeDeletesInWindowAbsentee(t *testing.T) {
 	arc := map[string]Record{
 		"gone": {UID: "gone", Date: event.Date{Year: 2026, Month: 9, Day: 1}, Title: "cancelled", FirstSeen: event.Date{Year: 2026, Month: 8, Day: 1}},
 	}
-	Merge(arc, nil, runNow)
+	Merge(arc, nil, winFrom, winTo, today)
 	if _, ok := arc["gone"]; ok {
 		t.Error("in-window absentee should be hard-deleted")
 	}
@@ -58,7 +63,7 @@ func TestMergeKeepsOutOfWindowAbsentee(t *testing.T) {
 	arc := map[string]Record{
 		"past": {UID: "past", Date: event.Date{Year: 2026, Month: 7, Day: 31}, Title: "happened", FirstSeen: event.Date{Year: 2026, Month: 7, Day: 1}},
 	}
-	Merge(arc, nil, runNow)
+	Merge(arc, nil, winFrom, winTo, today)
 	if _, ok := arc["past"]; !ok {
 		t.Error("out-of-window absentee should be kept frozen")
 	}
@@ -69,12 +74,41 @@ func TestBackfillNeverDeletes(t *testing.T) {
 	arc := map[string]Record{
 		"live": {UID: "live", Date: event.Date{Year: 2026, Month: 9, Day: 1}, Title: "upcoming", FirstSeen: event.Date{Year: 2026, Month: 8, Day: 1}},
 	}
-	Backfill(arc, []event.Event{ev(2024, 6, 1, "old", "back-catalog")}, runNow)
+	Backfill(arc, []event.Event{ev(2024, 6, 1, "old", "back-catalog")}, today)
 	if _, ok := arc["live"]; !ok {
 		t.Error("backfill must not delete existing records")
 	}
 	if _, ok := arc["old"]; !ok {
 		t.Error("backfill should add the historical event")
+	}
+}
+
+func TestMergeKeepsAfterWindowAbsentee(t *testing.T) {
+	// Dated 2027-10-01, past the window end (2027-09-01 exclusive): absence must
+	// not be treated as a deletion (guards a shortened window / clock skew).
+	arc := map[string]Record{
+		"future": {UID: "future", Date: event.Date{Year: 2027, Month: 10, Day: 1}, Title: "far ahead", FirstSeen: event.Date{Year: 2026, Month: 8, Day: 1}},
+	}
+	Merge(arc, nil, winFrom, winTo, today)
+	if _, ok := arc["future"]; !ok {
+		t.Error("after-window absentee should be kept, not deleted")
+	}
+}
+
+func TestMergeUpsertAndDeleteInSameCall(t *testing.T) {
+	// One in-window record survives (present in fetch, edited) while another
+	// in-window record is deleted (absent) — both in a single Merge.
+	arc := map[string]Record{
+		"keep": {UID: "keep", Date: event.Date{Year: 2026, Month: 9, Day: 1}, Title: "old", FirstSeen: event.Date{Year: 2026, Month: 8, Day: 1}},
+		"gone": {UID: "gone", Date: event.Date{Year: 2026, Month: 9, Day: 2}, Title: "cancelled", FirstSeen: event.Date{Year: 2026, Month: 8, Day: 1}},
+	}
+	Merge(arc, []event.Event{ev(2026, 9, 1, "keep", "edited")}, winFrom, winTo, today)
+
+	if got, ok := arc["keep"]; !ok || got.Title != "edited" {
+		t.Errorf("keep = %+v, ok=%v; want title 'edited'", got, ok)
+	}
+	if _, ok := arc["gone"]; ok {
+		t.Error("gone should be deleted")
 	}
 }
 
