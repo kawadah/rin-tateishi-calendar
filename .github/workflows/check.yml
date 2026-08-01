@@ -1,22 +1,23 @@
 # Go checks: lint, test, build. Runs on pushes to main and on pull requests.
 name: Check
+
 on:
   push:
     branches: [main]
     # Skip CI for changes that don't affect the build: docs and the
     # bot-updated data/ archive.
     paths-ignore: &skip
+      - data/**
+      - docs/**
       - "**.md"
-      - "docs/**"
       - LICENSE
-      - "data/**"
   pull_request:
     paths-ignore: *skip
 
 permissions: {}
 
 jobs:
-  go:
+  check:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
