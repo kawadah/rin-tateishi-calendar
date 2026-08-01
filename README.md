@@ -34,4 +34,4 @@ The project code is [MIT licensed](LICENSE) — the license covers the code only
 
 ---
 
-Building or contributing? See [CONTRIBUTING.md](CONTRIBUTING.md) for local development and [ROADMAP.md](ROADMAP.md) for the design.
+Building or contributing? See [CONTRIBUTING.md](CONTRIBUTING.md) for local development and [docs/design.md](docs/design.md) for the design.

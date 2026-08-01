@@ -29,7 +29,7 @@ fetch /open/data → decode → normalize → merge archive (data/) → render .
 - **Archive** (`data/{YYYY}-{MM}.json`) — a durable record of every event ever seen, kept even after events roll out of the live window. Owner deletions inside the window are removed; past events are frozen.
 - **`.ics`** mirrors only the live set (the current fetch window); all-day events, dates in `Asia/Tokyo`.
 
-Design rationale and decisions are in [ROADMAP.md](ROADMAP.md).
+Design rationale and decisions are in [docs/design.md](docs/design.md).
 
 ### Layout
 
