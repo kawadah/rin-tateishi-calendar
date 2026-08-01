@@ -31,6 +31,12 @@ const (
 	retryBackoff = 500 * time.Millisecond
 )
 
+// maxResponseBytes caps the response body read to guard against a hostile or
+// runaway response (real responses are a few hundred KB).
+const maxResponseBytes = 32 << 20
+
+const userAgent = "rin-tateishi-calendar (+https://github.com/kawadah/rin-tateishi-calendar)"
+
 // Month identifies a calendar month.
 type Month struct {
 	Year  int
@@ -146,6 +152,7 @@ func (c *Client) do(ctx context.Context, encodedForm string) (body []byte, statu
 		return nil, 0, err
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8")
+	req.Header.Set("User-Agent", userAgent)
 
 	resp, err := c.HTTP.Do(req)
 	if err != nil {
@@ -153,7 +160,7 @@ func (c *Client) do(ctx context.Context, encodedForm string) (body []byte, statu
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	body, err = io.ReadAll(resp.Body)
+	body, err = io.ReadAll(io.LimitReader(resp.Body, maxResponseBytes))
 	if err != nil {
 		return nil, 0, err
 	}

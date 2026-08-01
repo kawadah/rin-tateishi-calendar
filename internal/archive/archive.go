@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 
 	"github.com/kawadah/rin-tateishi-calendar/internal/event"
@@ -107,7 +108,8 @@ func (s *Store) Save(archive map[string]Record) error {
 		return err
 	}
 	for _, e := range entries {
-		if e.IsDir() || filepath.Ext(e.Name()) != ".json" || wanted[e.Name()] {
+		// Only sweep our own month files; never touch hand-added files.
+		if e.IsDir() || !monthFilePattern.MatchString(e.Name()) || wanted[e.Name()] {
 			continue
 		}
 		if err := os.Remove(filepath.Join(s.Dir, e.Name())); err != nil {
@@ -116,6 +118,9 @@ func (s *Store) Save(archive map[string]Record) error {
 	}
 	return nil
 }
+
+// monthFilePattern matches the archive's own file names (YYYY-MM.json).
+var monthFilePattern = regexp.MustCompile(`^\d{4}-\d{2}\.json$`)
 
 // Merge applies a normal run to archive (mutated in place): upsert the fetched
 // events (edits overwrite), then hard-delete archived records inside the fetch
