@@ -123,14 +123,19 @@ Goal: obtain structured events (start/end datetime, title, description, location
 
 ## Phase 5 — Publishing
 
-- [ ] GitHub Actions workflow on `schedule` (cron) + `workflow_dispatch` for manual runs.
-- [ ] Steps: checkout → build → run pipeline → produce `dist/calendar.ics` **and updated `data/` archive**.
-- [ ] **Commit the archive** back to the repo when it changes (the run mutates `data/`; commit via the workflow, e.g. a bot commit).
-- [ ] **Upload the `.ics` to Cloudflare R2** via **wrangler or rclone as a CI step** (language-agnostic; keeps the Go binary free of an S3 SDK), credentials from GitHub Secrets.
-- [ ] Set correct `Content-Type: text/calendar; charset=utf-8` and sensible `Cache-Control`.
-- [ ] Decide public access: R2 public bucket URL vs. Cloudflare Worker/custom domain in front. _(Open decision.)_
-- [ ] Skip upload when the file is unchanged (compare hash) to minimize churn.
-- [ ] **Alternative considered:** commit `.ics` to repo + GitHub Pages. Simpler, but R2 keeps the repo clean and decouples hosting.
+Decisions: **cadence = every 6h** (matches the feed's refresh hint) + `workflow_dispatch`; **access = custom domain** on the R2 bucket; **upload = wrangler**.
+
+- [ ] GitHub Actions workflow: `schedule` (cron `0 */6 * * *`) + `workflow_dispatch`.
+- [ ] Steps: checkout → setup mise (go) → run pipeline → produce `dist/calendar.ics` **and updated `data/` archive**.
+- [ ] **Commit the archive** back to the repo when `data/` changes (bot commit; no-op when unchanged — the archive is deterministic).
+- [ ] **Upload `dist/calendar.ics` to R2 via `wrangler r2 object put`** with `Content-Type: text/calendar; charset=utf-8` and a sensible `Cache-Control`. Auth from GitHub Secrets (`CLOUDFLARE_API_TOKEN`, account id).
+- [ ] Skip upload when the `.ics` is unchanged (hash compare) to minimize churn.
+- [ ] Parameterize bucket/key/account via repo **vars/secrets** so no infra values live in the repo.
+
+### Setup the user must do (Cloudflare + GitHub) — values I never handle
+- Create the R2 bucket; attach the **custom domain** (Cloudflare dashboard → R2 → bucket → Settings → Custom Domains). Subscribers point at `https://<domain>/<key>`.
+- Create a scoped **API token** (R2 write) and add GitHub secrets: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`; repo var `R2_BUCKET` (default `rin-tateishi-calendar`) and the object key.
+- **Alternative considered:** commit `.ics` to repo + GitHub Pages. Simpler, but R2 keeps the repo clean and decouples hosting.
 
 ## Phase 6 — Reliability & observability
 
@@ -152,9 +157,8 @@ Goal: obtain structured events (start/end datetime, title, description, location
 
 ## Open decisions
 
-- Final hosting target: R2 public bucket vs. R2 + Worker/custom domain.
-- Refresh cadence (e.g. every 6h vs. daily) — balance freshness against source load.
-- **Go tooling** (owed consult before Phase 0): linter, ICS library, test approach.
+- ~~Hosting target~~ → **Resolved: R2 bucket + custom domain**, uploaded via `wrangler`.
+- ~~Refresh cadence~~ → **Resolved: every 6h** (`0 */6 * * *`) + manual `workflow_dispatch`.
 - ~~Language~~ → **Resolved: Go.** The pipeline is pure HTTP+JSON with no browser need, so JS was an unnecessary constraint; earlier JS sub-tool answers (Vitest/oxlint/ical-generator) are moot.
 - ~~R2 upload mechanism~~ → **Resolved: wrangler/rclone as a CI step** (no S3 SDK in the Go binary).
 - ~~Fetch window~~ → **Resolved: 1st of current month → +12 months.** Fetch only dates ≥ 1st of current month; a one-time backfill seeds the pre-existing back-catalog (2024-06 →).
