@@ -40,8 +40,8 @@ func Default() Config {
 	return Config{
 		MemberNo: 231613,
 
-		CalendarName: "立石凛 スケジュール",
-		CalendarDesc: "立石凛さんの公式カレンダー（freecalend）の非公式ミラー",
+		CalendarName: "立石凛スケジュール",
+		CalendarDesc: "立石凛の公式スケジュール（フリカレ）を照会カレンダーとしてミラーしたもの",
 		ProductID:    "-//rin-tateishi-calendar//freecalend mirror//JA",
 		Timezone:     "Asia/Tokyo",
 		RefreshTTL:   "PT6H",
