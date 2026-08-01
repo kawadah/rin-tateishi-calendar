@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/kawadah/rin-tateishi-calendar/internal/decode"
+	"github.com/kawadah/rin-tateishi-calendar/internal/event"
 	"github.com/kawadah/rin-tateishi-calendar/internal/fetch"
 )
 
@@ -44,15 +45,16 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("fetch: %w", err)
 	}
-	events, err := decode.Events(body)
+	raw, err := decode.Events(body)
 	if err != nil {
 		return fmt.Errorf("decode: %w", err)
 	}
+	events := event.Normalize(raw)
 
 	fmt.Printf("fetched %d events (%04d-%02d .. %04d-%02d)\n",
 		len(events), from.Year, from.Month, to.Year, to.Month)
 	for _, e := range events {
-		fmt.Printf("  %04d-%02d-%02d  %s\n", e.Year, e.Month, e.Day, e.Title)
+		fmt.Printf("  %s  %s\n", e.Date, e.Title)
 	}
 	return nil
 }
