@@ -90,9 +90,10 @@ Goal: obtain structured events (start/end datetime, title, description, location
 
 - [x] **Reverse-engineer acquisition.** Done — see `.tmp/phase1-findings.md`. `POST /open/data` is a stateless JSON API (no auth); protocol documented above.
 - [x] **Decision: direct `fetch` of `/open/data`.** No headless browser.
-- [ ] Implement the fetcher: build the `keys` blob for the window (1st of current month → +12 months), POST, decode `set` ops into raw events.
-- [ ] Capture a raw fixture (`test/fixtures/`) of a real API response for offline testing.
-- [ ] **Exit criteria:** a documented, repeatable way to get raw event data on demand. _(Approach proven end-to-end via curl; implementation pending Phase 0.)_
+- [x] Implement the fetcher (`internal/fetch`): build the `keys` blob for the window (current month → +12 months), POST, return the raw body.
+- [x] Decode `set` ops into raw events (`internal/decode`); `cmd/calendar` wires fetch→decode.
+- [x] Capture a raw fixture (`internal/decode/testdata/response_2026-08.json`) for offline decode tests.
+- [x] **Exit criteria met:** `mise run pipeline` fetches & decodes the live window (verified: 18 events, 2026-08 → 2027-08).
 
 ## Phase 2 — Parsing & normalization
 
