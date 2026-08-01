@@ -1,23 +1,23 @@
-# Lints the GitHub Actions workflows and the Dependabot config (actionlint +
-# zizmor). Runs on pushes to main and on pull requests.
+# Lints the GitHub Actions workflows and the Dependabot config (actionlint + zizmor). Runs on pushes to main and on pull requests.
 name: Check workflows
+
 on:
   push:
     branches: [main]
     # Skip CI for changes that don't affect the build: docs and the
     # bot-updated data/ archive.
     paths-ignore: &skip
+      - data/**
+      - docs/**
       - "**.md"
-      - "docs/**"
       - LICENSE
-      - "data/**"
   pull_request:
     paths-ignore: *skip
 
 permissions: {}
 
 jobs:
-  lint:
+  check:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
