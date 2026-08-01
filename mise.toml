@@ -44,5 +44,5 @@ description = "Locate the data request in a browser HAR export (pass a file path
 run = "go run ./cmd/inspect-har"
 
 [tasks."lint:workflows"]
-description = "Lint GitHub Actions workflows (actionlint + zizmor)"
-run = ["actionlint", "zizmor .github/workflows"]
+description = "Lint GitHub Actions workflows + dependabot (actionlint + zizmor)"
+run = ["actionlint", "zizmor .github"]

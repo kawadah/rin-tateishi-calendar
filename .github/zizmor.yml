@@ -1,8 +1,0 @@
-# zizmor configuration — https://docs.zizmor.sh/configuration/
-# Require every `uses:` to be pinned to a commit hash (enforced repo-wide;
-# pinact keeps the hashes current).
-rules:
-  unpinned-uses:
-    config:
-      policies:
-        "*": hash-pin
