@@ -11,7 +11,9 @@ name: Publish calendar
 
 on:
   schedule:
-    - cron: "0 */6 * * *" # every 6 hours (UTC)
+    # Every 6 hours at 00/06/12/18 JST (Asia/Tokyo has no DST).
+    - cron: "0 */6 * * *"
+      timezone: "Asia/Tokyo"
   workflow_dispatch:
 
 # Serialize runs so the archive commit-back never races another run.

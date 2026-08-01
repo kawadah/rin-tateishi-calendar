@@ -125,7 +125,7 @@ Goal: obtain structured events (start/end datetime, title, description, location
 
 Decisions: **cadence = every 6h** (matches the feed's refresh hint) + `workflow_dispatch`; **access = custom domain** on the R2 bucket; **upload = wrangler**.
 
-- [x] GitHub Actions workflow (`.github/workflows/publish.yml`): `schedule` (cron `0 */6 * * *`) + `workflow_dispatch`, serialized via `concurrency`.
+- [x] GitHub Actions workflow (`.github/workflows/publish.yml`): `schedule` (cron `0 */6 * * *`, `timezone: Asia/Tokyo` → 00/06/12/18 JST) + `workflow_dispatch`, serialized via `concurrency`.
 - [x] Steps: checkout → mise-action → `mise run pipeline` → `dist/calendar.ics` **and updated `data/` archive**.
 - [x] **Commit the archive** back when `data/` changes (bot commit, `--rebase --autostash` before push; no-op when unchanged).
 - [x] **Upload `dist/calendar.ics` to R2 via `wrangler r2 object put`** with `Content-Type: text/calendar; charset=utf-8` and `Cache-Control: public, max-age=3600`.
@@ -159,7 +159,7 @@ Decisions: **cadence = every 6h** (matches the feed's refresh hint) + `workflow_
 ## Open decisions
 
 - ~~Hosting target~~ → **Resolved: R2 bucket + custom domain**, uploaded via `wrangler`.
-- ~~Refresh cadence~~ → **Resolved: every 6h** (`0 */6 * * *`) + manual `workflow_dispatch`.
+- ~~Refresh cadence~~ → **Resolved: every 6h** (`0 */6 * * *`, `timezone: Asia/Tokyo` → 00/06/12/18 JST) + manual `workflow_dispatch`.
 - ~~Language~~ → **Resolved: Go.** The pipeline is pure HTTP+JSON with no browser need, so JS was an unnecessary constraint; earlier JS sub-tool answers (Vitest/oxlint/ical-generator) are moot.
 - ~~R2 upload mechanism~~ → **Resolved: wrangler/rclone as a CI step** (no S3 SDK in the Go binary).
 - ~~Fetch window~~ → **Resolved: 1st of current month → +12 months.** Fetch only dates ≥ 1st of current month; a one-time backfill seeds the pre-existing back-catalog (2024-06 →).
