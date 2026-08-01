@@ -76,3 +76,25 @@ jobs:
             --content-type "text/calendar; charset=utf-8" \
             --cache-control "public, max-age=3600"
           echo "uploaded ${target}"
+
+  # Independent contract canary: detect protocol drift early. Failing here (or a
+  # failed publish) emails the repo watchers via GitHub's default notifications.
+  canary:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up toolchain (mise)
+        uses: jdx/mise-action@v2
+
+      - name: Verify protocol
+        run: mise run verify-protocol
+
+      - name: Upload raw response on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: verify-protocol-failure
+          path: verify-protocol-failure.json
+          if-no-files-found: ignore
