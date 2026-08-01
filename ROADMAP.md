@@ -115,11 +115,11 @@ Goal: obtain structured events (start/end datetime, title, description, location
 
 ## Phase 4 — ICS generation (live set)
 
-- [ ] Generate the `.ics` from the **current fetch window** (events dated 1st of current month → +12 months present in the latest fetch).
-- [ ] Emit RFC 5545 `.ics` (via `golang-ical` or hand-rolled — to confirm) with proper `VTIMEZONE` (Asia/Tokyo).
-- [ ] Set calendar metadata: name, description, `X-WR-CALNAME`, refresh interval hint (`REFRESH-INTERVAL`, `X-PUBLISHED-TTL`).
-- [ ] Deterministic output ordering so unchanged data produces a byte-identical file (avoids noisy diffs / needless uploads).
-- [ ] Validate output against an ICS validator and by importing into Google Calendar + Apple Calendar.
+- [x] Generate `dist/calendar.ics` from the **live set** (current fetch window); backfill skips feed generation.
+- [x] Emit RFC 5545 `.ics` via `golang-ical` — all-day `DATE` VEVENTs (exclusive `DTEND`). No `VTIMEZONE` needed: all-day dates are JST calendar days with no time component; `X-WR-TIMEZONE:Asia/Tokyo` set as a hint.
+- [x] Calendar metadata: name/description, `X-WR-CALNAME`/`X-WR-CALDESC`, `METHOD:PUBLISH`, `REFRESH-INTERVAL`/`X-PUBLISHED-TTL` (PT6H).
+- [x] Deterministic output — pinned `DTSTAMP` + sorted events; verified byte-identical across runs.
+- [x] Validated: round-trips through the iCalendar parser in tests. _(Manual Google/Apple subscribe check deferred until there's a published URL — Phase 5.)_
 
 ## Phase 5 — Publishing
 
