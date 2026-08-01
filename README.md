@@ -68,6 +68,7 @@ mise run pipeline -- -backfill
 | Path                     | Purpose |
 | ------------------------ | ------- |
 | `cmd/calendar`           | pipeline entrypoint (`-backfill` mode) |
+| `internal/config`        | centralized settings (member, name, window, …) |
 | `internal/fetch`         | `/open/data` client |
 | `internal/decode`        | response → raw events |
 | `internal/event`         | normalize, split multi-event cells, all-day model |
