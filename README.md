@@ -10,11 +10,10 @@ Source: [立石凛 ＠ フリカレ](https://freecalend.com/open/mem231613) (fre
 Add this URL as a calendar subscription:
 
 ```
-https://<custom-domain>/<object-key>
+https://calendars.seiyuu.app/rin-tateishi/calendar.ics
 ```
 
-_(Live once the R2 custom domain and GitHub secrets are configured — see the
-[roadmap](ROADMAP.md), Phase 5.)_
+_(Served from Cloudflare R2; goes live after the first publish run.)_
 
 - **Google Calendar:** Other calendars → From URL → paste the link.
 - **Apple Calendar:** File → New Calendar Subscription → paste the link.
