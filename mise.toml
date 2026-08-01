@@ -30,3 +30,11 @@ run = "go mod tidy"
 [tasks.pipeline]
 description = "Run the full pipeline once (fetch -> archive -> ics)"
 run = "go run ./cmd/calendar"
+
+[tasks.verify-protocol]
+description = "Contract canary: check the /open/data protocol still decodes"
+run = "go run ./cmd/verify-protocol"
+
+[tasks.inspect-har]
+description = "Locate the data request in a browser HAR export (pass a file path)"
+run = "go run ./cmd/inspect-har"
