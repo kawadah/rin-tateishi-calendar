@@ -55,7 +55,8 @@ jobs:
           fi
 
           git add data/
-          git commit -m "chore(data): update archive [skip ci]"
+          ts="$(TZ=Asia/Tokyo date +'%Y-%m-%d %H:%M')"
+          git commit -m "Update schedule (${ts})" -m "[skip ci]"
           # Reconcile with any commits pushed since checkout, then push.
           git pull --rebase --autostash origin "${GITHUB_REF_NAME}"
           git push origin "HEAD:${GITHUB_REF_NAME}"
