@@ -21,15 +21,19 @@ concurrency:
   group: publish
   cancel-in-progress: false
 
-permissions:
-  contents: write # to commit the updated data/ archive back
+# Minimal default; each job opts into only what it needs.
+permissions: {}
 
 jobs:
   publish:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # to commit the updated data/ archive back
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Set up toolchain (mise)
         uses: jdx/mise-action@v2
@@ -38,6 +42,8 @@ jobs:
         run: mise run pipeline
 
       - name: Commit archive changes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
@@ -48,9 +54,12 @@ jobs:
           fi
           git add data/
           git commit -m "chore(data): update archive [skip ci]"
+          # Authenticate git over HTTPS via an inline header instead of persisted
+          # credentials (checkout ran with persist-credentials: false).
+          auth="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
           # Reconcile with any commits pushed since checkout, then push.
-          git pull --rebase --autostash origin "${GITHUB_REF_NAME}"
-          git push origin "HEAD:${GITHUB_REF_NAME}"
+          git -c http.extraheader="$auth" pull --rebase --autostash origin "${GITHUB_REF_NAME}"
+          git -c http.extraheader="$auth" push origin "HEAD:${GITHUB_REF_NAME}"
 
       - name: Upload .ics to R2 (skip if unchanged)
         env:
@@ -83,9 +92,13 @@ jobs:
   # failed publish) emails the repo watchers via GitHub's default notifications.
   canary:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Set up toolchain (mise)
         uses: jdx/mise-action@v2
