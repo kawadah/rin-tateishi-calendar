@@ -108,12 +108,7 @@ jobs:
           name: calendar-ics
           path: dist
 
-      - name: Upload .ics to R2, skip if unchanged
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          R2_BUCKET: ${{ vars.R2_BUCKET }}
-          R2_OBJECT_KEY: ${{ vars.R2_OBJECT_KEY }}
+      - name: Upload .ics to R2
         run: |
           set -euo pipefail
           : "${R2_BUCKET:?set repo variable R2_BUCKET}"
@@ -127,6 +122,11 @@ jobs:
             --content-type "text/calendar; charset=utf-8" \
             --cache-control "public, max-age=3600"
           echo "uploaded ${target}"
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          R2_BUCKET: ${{ vars.R2_BUCKET }}
+          R2_OBJECT_KEY: ${{ vars.R2_OBJECT_KEY }}
 
   # Independent contract canary: detect protocol drift early. Failing here (or a
   # failed publish) emails the repo watchers via GitHub's default notifications.
