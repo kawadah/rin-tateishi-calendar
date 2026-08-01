@@ -100,7 +100,7 @@ Goal: obtain structured events (start/end datetime, title, description, location
 - [x] Define the `event.Event` struct (uid, date, title, allDay). Leaner than first sketched: per the all-day decision the full source string stays in `title`, so description/location/url aren't split out.
 - [x] `event.Normalize` parses `[]decode.RawEvent` → sorted `[]Event`.
 - [x] Timezone: dates are JST (`Asia/Tokyo`) calendar days from the source day-key; all-day, so no conversion needed.
-- [x] Stable `UID` (`{day-key}@freecalend.com`) so edited titles update in place instead of duplicating.
+- [x] Stable `UID` (`{day-key}#{index}@freecalend.com`) so edited titles update in place; the `#index` distinguishes multiple events in one day cell (see multi-event decision below).
 - [x] Defensive parsing: empty-after-clean titles skipped; malformed ops already skipped in decode.
 - [x] Unit tests for `cleanTitle` and `Normalize` (whitespace, skip, sort, UID/date).
 
@@ -162,4 +162,5 @@ Goal: obtain structured events (start/end datetime, title, description, location
 - ~~Edit handling~~ → **Resolved: overwrite** the existing record.
 - ~~Event modeling~~ → **Resolved: all-day events** (inline showtimes kept in the title text, not modeled as timed events).
 - ~~Split location/time into separate fields~~ → **Resolved: no.** Verified the source payload has only one free-text field (fields after `title` are null/empty/render metadata); location & times exist only as title substrings. Parsing them out is brittle and not worth it. `Event` keeps the full string in `Title`.
+- ~~Multiple events on one date~~ → **Resolved: split on blank lines.** The source stores one text cell per day, but owners pack multiple events into it separated by blank lines. `Normalize` splits blank-line blocks into separate all-day events (`{day-key}#{index}` UIDs); a lone `\n` stays a soft wrap within one event. Accepted heuristic limit: events separated by only a single `\n` remain one entry.
 - ~~Whether a headless browser is required~~ → **Resolved: no. Direct stateless API fetch.**
