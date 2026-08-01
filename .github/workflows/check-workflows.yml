@@ -4,12 +4,15 @@ name: Check workflows
 on:
   push:
     branches: [main]
-    paths-ignore: &docs
+    # Skip CI for changes that don't affect the build: docs and the
+    # bot-updated data/ archive.
+    paths-ignore: &skip
       - "**.md"
       - "docs/**"
       - LICENSE
+      - "data/**"
   pull_request:
-    paths-ignore: *docs
+    paths-ignore: *skip
 
 permissions: {}
 
