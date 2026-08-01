@@ -77,11 +77,12 @@ When the canary fails:
 
 ## Phase 0 — Project scaffolding
 
-- [ ] Pin the toolchain into project `mise.toml`: `mise use go` (add other tools the same way as needed).
-- [ ] `go mod init`; standard layout: `cmd/` (entrypoints: pipeline, `inspect-har`, `verify-protocol`), `internal/` (fetch, decode, archive, ics, upload), `testdata/`.
-- [ ] **Tool selection to confirm before scaffolding:** lint (`golangci-lint` vs. `go vet`+`gofmt`), ICS library (`golang-ical` vs. hand-rolled), test approach (stdlib `testing` + `testdata`). _(Owed consult.)_
-- [ ] Makefile / task targets: `build`, `test`, `lint`, `run` (full pipeline once).
-- [ ] `.env.example` for secrets (R2 credentials, source URL).
+- [x] Pin the toolchain into project `mise.toml`: `go@1.26.4`, `golangci-lint@2.12.2`.
+- [x] `go mod init github.com/kawadah/rin-tateishi-calendar`; layout: `cmd/` (`calendar`, `inspect-har`, `verify-protocol`), `internal/` (fetch, decode, archive, ics, upload), `testdata/`, `docs/`. _(internal/* dirs are populated per phase.)_
+- [x] **Tools confirmed:** `golangci-lint` (v2 config, default `standard` + misspell/unconvert, gofmt/goimports), `golang-ical` for ICS, stdlib `testing` + `testdata`.
+- [x] Makefile targets: `build`, `test`, `lint`, `fmt`, `tidy`, `run`.
+- [x] `.env.example` for secrets (R2 credentials, source member no).
+- Module path assumes remote `github.com/kawadah/...` — adjust if the real remote differs.
 
 ## Phase 1 — Data acquisition (the crux)
 
