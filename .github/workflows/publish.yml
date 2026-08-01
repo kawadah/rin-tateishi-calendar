@@ -1,0 +1,78 @@
+# Fetches the source calendar, updates the durable archive under data/, and
+# publishes the live .ics to Cloudflare R2.
+#
+# Required GitHub configuration (Settings -> Secrets and variables -> Actions):
+#   Secrets:   CLOUDFLARE_API_TOKEN   (scoped token with R2 read+write)
+#              CLOUDFLARE_ACCOUNT_ID
+#   Variables: R2_BUCKET              (e.g. rin-tateishi-calendar)
+#              R2_OBJECT_KEY          (e.g. calendar.ics)
+# Subscribers point their calendar app at https://<your-custom-domain>/<R2_OBJECT_KEY>.
+name: Publish calendar
+
+on:
+  schedule:
+    - cron: "0 */6 * * *" # every 6 hours (UTC)
+  workflow_dispatch:
+
+# Serialize runs so the archive commit-back never races another run.
+concurrency:
+  group: publish
+  cancel-in-progress: false
+
+permissions:
+  contents: write # to commit the updated data/ archive back
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up toolchain (mise)
+        uses: jdx/mise-action@v2
+
+      - name: Run pipeline (fetch -> archive -> ics)
+        run: mise run pipeline
+
+      - name: Commit archive changes
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if [ -z "$(git status --porcelain data/)" ]; then
+            echo "archive unchanged"
+            exit 0
+          fi
+          git add data/
+          git commit -m "chore(data): update archive [skip ci]"
+          # Reconcile with any commits pushed since checkout, then push.
+          git pull --rebase --autostash origin "${GITHUB_REF_NAME}"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
+
+      - name: Upload .ics to R2 (skip if unchanged)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          R2_BUCKET: ${{ vars.R2_BUCKET }}
+          R2_OBJECT_KEY: ${{ vars.R2_OBJECT_KEY }}
+        run: |
+          set -euo pipefail
+          : "${R2_BUCKET:?set repo variable R2_BUCKET}"
+          : "${R2_OBJECT_KEY:?set repo variable R2_OBJECT_KEY}"
+          : "${CLOUDFLARE_API_TOKEN:?set secret CLOUDFLARE_API_TOKEN}"
+          : "${CLOUDFLARE_ACCOUNT_ID:?set secret CLOUDFLARE_ACCOUNT_ID}"
+          target="${R2_BUCKET}/${R2_OBJECT_KEY}"
+
+          # Skip the upload when the published object already matches.
+          if npx --yes wrangler@4 r2 object get "$target" --file current.ics --remote >/dev/null 2>&1 \
+             && cmp -s current.ics dist/calendar.ics; then
+            echo "published .ics is unchanged; skipping upload"
+            exit 0
+          fi
+
+          npx --yes wrangler@4 r2 object put "$target" \
+            --file dist/calendar.ics --remote \
+            --content-type "text/calendar; charset=utf-8" \
+            --cache-control "public, max-age=3600"
+          echo "uploaded ${target}"
