@@ -78,37 +78,45 @@ type Event struct {
 	AllDay bool
 }
 
-var spaceRun = regexp.MustCompile(`[ \t]+`)
+var (
+	spaceRun  = regexp.MustCompile(`[ \t]+`)
+	blankLine = regexp.MustCompile("\n[ \t　]*\n+")
+)
 
-// cleanTitle normalizes source title text: line breaks become spaces, runs of
-// ASCII spaces/tabs collapse to one, and surrounding whitespace is trimmed.
-// Full-width (U+3000) spaces inside the text are preserved as-is.
-func cleanTitle(s string) string {
+// splitTitle splits a day cell's text into one event per blank-line-separated
+// block. A source day cell can hold several events the owner separated with a
+// blank line; a lone line break within a block is treated as a soft wrap and
+// collapsed to a space. Full-width (U+3000) spaces inside text are preserved;
+// blank/whitespace-only blocks are dropped.
+func splitTitle(s string) []string {
 	s = strings.ReplaceAll(s, "\r\n", "\n")
 	s = strings.ReplaceAll(s, "\r", "\n")
-	s = strings.ReplaceAll(s, "\n", " ")
-	s = spaceRun.ReplaceAllString(s, " ")
-	return strings.TrimSpace(s)
+	var out []string
+	for _, block := range blankLine.Split(s, -1) {
+		block = strings.ReplaceAll(block, "\n", " ")
+		block = spaceRun.ReplaceAllString(block, " ")
+		if block = strings.TrimSpace(block); block != "" {
+			out = append(out, block)
+		}
+	}
+	return out
 }
 
-// Normalize converts raw decoded events into normalized events, sorted by date
-// then UID for deterministic output. Entries whose title is empty after
-// cleaning are skipped.
+// Normalize converts raw decoded events into normalized, all-day events,
+// sorted by date then UID. A day cell with multiple blank-line-separated
+// events yields one Event per block, its UID suffixed "#<index>".
 func Normalize(raw []decode.RawEvent) []Event {
-	events := make([]Event, 0, len(raw))
+	var events []Event
 	for _, r := range raw {
-		title := cleanTitle(r.Title)
-		if title == "" {
-			continue
+		date := Date{Year: r.Year, Month: r.Month, Day: r.Day}
+		for i, title := range splitTitle(r.Title) {
+			events = append(events, Event{
+				UID:    fmt.Sprintf("%s#%d@freecalend.com", r.Key, i),
+				Date:   date,
+				Title:  title,
+				AllDay: true,
+			})
 		}
-		events = append(events, Event{
-			// The source day-key is stable per event, so keying the UID off it
-			// means an edited title updates in place instead of duplicating.
-			UID:    r.Key + "@freecalend.com",
-			Date:   Date{Year: r.Year, Month: r.Month, Day: r.Day},
-			Title:  title,
-			AllDay: true,
-		})
 	}
 	sort.Slice(events, func(i, j int) bool {
 		if a, b := events[i].Date.ordinal(), events[j].Date.ordinal(); a != b {
