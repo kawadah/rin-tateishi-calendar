@@ -14,7 +14,7 @@ Fetch and parse Rin Tateishi's official calendar and publish it as a subscribabl
 
 ## Key technical risk — RESOLVED (Phase 1 spike): direct API, no browser
 
-Events are **not** in static HTML; the page loads them via `POST /open/data`. The spike proved this endpoint is a **clean, stateless JSON API** — **no cookies, no session token, no signing** (verified with `credentials:"omit"` and a cold `curl`). **Decision: fetch `/open/data` directly with Go's `net/http`. No headless browser / JS runtime needed** — the browser was only a one-time reverse-engineering aid, never a production dependency (see *Protocol maintenance* below). Full write-up + protocol in `.tmp/phase1-findings.md`.
+Events are **not** in static HTML; the page loads them via `POST /open/data`. The spike proved this endpoint is a **clean, stateless JSON API** — **no cookies, no session token, no signing** (verified with `credentials:"omit"` and a cold `curl`). **Decision: fetch `/open/data` directly with Go's `net/http`. No headless browser / JS runtime needed** — the browser was only a one-time reverse-engineering aid, never a production dependency (see *Protocol maintenance* below). See `docs/protocol.md` for the full protocol.
 
 ### Protocol
 - `POST https://freecalend.com/open/data`, `Content-Type: application/x-www-form-urlencoded; charset=UTF-8`.
@@ -30,7 +30,7 @@ Consequences for later phases:
 
 The project maintains **two outputs with different lifecycles**:
 
-1. **Durable archive (committed to the repo).** Accumulates events as they're observed and **preserves them after they roll past** (age out of the fetch window). Per-month JSON under `data/` (e.g. `data/2026-08.json`) so diffs stay small and readable. Each record carries `date`, `title` (raw source string), source `uid`, `first_seen`, `last_seen`. Git history is the ultimate backstop — anything removed from `data/` stays recoverable in commits.
+1. **Durable archive (committed to the repo).** Accumulates events as they're observed and **preserves them after they roll past** (age out of the fetch window). Per-month JSON under `data/` (e.g. `data/2026-08.json`) so diffs stay small and readable. Each record carries `uid`, `date`, `title` (raw source string), and `first_seen`. Git history is the ultimate backstop — anything removed from `data/` stays recoverable in commits.
 2. **Published `.ics` (live set).** The events in the **current fetch window** (1st of current month → +12 months). Rolls forward monthly; past events leave the feed but remain in the archive.
 
 ### Fetch window
@@ -49,13 +49,12 @@ Each run: fetch → merge/edit/delete per the rules above → regenerate `.ics` 
 We depend on an **undocumented, unversioned** third-party API (`/open/data`) that can change without notice. This makes breakage **detectable early** and recovery **reproducible** — so re-deriving the protocol is a guided procedure, not archaeology. The one-time reverse-engineering that discovered the current protocol is captured here as a repeatable process.
 
 ### Detect — know when it broke
-- **Contract canary** (scheduled, runs independently of the main fetch): replays the documented request and asserts the response still (a) is HTTP 200, (b) parses as the expected JSON array, (c) has ≥1 `set` op of the expected shape, and (d) contains a **pinned known event** (a fixed past date + title from the fixture). Any failure → alert "protocol may have changed."
+- **Contract canary** (`cmd/verify-protocol`, scheduled independently of the main fetch): live-fetches a fixed dense past window (2024-07..2025-06) and asserts the response (a) still decodes into ≥30 events, and (b) contains a **pinned known event** (2024-07-06, title containing "BCF2024") — the pinned check catches a title-position shift that a bare count would miss. On failure it dumps the raw response and CI uploads it as an artifact.
 - Main pipeline also fails loudly on zero events / decode errors (see Phase 6).
-- On failure, CI uploads the **raw response as an artifact** for inspection.
 
 ### Reference baseline — what we diff against
-- `docs/protocol.md` — the canonical spec (endpoint, method, params, `keys` structure, response encoding, decode steps). Single source of truth; carries a `PROTOCOL_VERSION`.
-- `testdata/known-good.json` — a recorded real request + response including the pinned canary event. Drives decoder tests **and** the canary.
+- `docs/protocol.md` — the canonical spec (endpoint, method, params, `keys` structure, response encoding, decode steps). Single source of truth; carries a prose `Protocol version`.
+- `internal/decode/testdata/response_2026-08.json` — a recorded real response driving the decoder tests. (The canary itself uses a live fetch + the pinned event, not a recorded request.)
 
 ### Reproducible re-RE runbook — `docs/reverse-engineering.md`
 When the canary fails:
@@ -65,13 +64,13 @@ When the canary fails:
 4. **Locate the data request — scripted.** Run `inspect-har <file>`: lists all XHR/fetch POSTs ranked by response size / member-id presence, and dumps the top candidate's method, URL, header names, body param names+sizes, and response head. Turns "poke around DevTools" into a deterministic step.
 5. **Diff vs. `docs/protocol.md`.** Identify what changed: endpoint path, param names, `keys` shape, or response encoding.
 6. **Reconstruct & verify.** Rebuild the request from scratch; confirm a cold `curl`/Go client reproduces the browser response for the known event.
-7. **Update & re-pin.** Update `docs/protocol.md`, `testdata/known-good.json`, the Go decoder, and the canary event; bump `PROTOCOL_VERSION`.
+7. **Update & re-pin.** Update `docs/protocol.md` (and its `Protocol version`), the decode fixture `internal/decode/testdata/response_2026-08.json`, the Go decoder, and the canary's pinned event if needed.
 8. **Verify green.** Run the canary + full pipeline; confirm known events reappear.
 
 ### Reproducible tooling (checked into the repo)
 - `cmd/inspect-har` — HAR (just JSON) → ranked candidate data requests + their shapes. Written in Go so there's no second toolchain.
-- `cmd/verify-protocol` — replays the documented request and asserts the canary event/shape. Reused as both the scheduled canary and the runbook's step-6/8 verification.
-- Fixtures + `docs/protocol.md` kept in lockstep with the decoder (a decoder change without a fixture/spec update should fail CI).
+- `cmd/verify-protocol` — live-fetches the fixed window and asserts the count floor + pinned event. Reused as both the scheduled canary and the runbook's step-8 verification.
+- Fixtures + `docs/protocol.md` are kept in lockstep with the decoder by convention (update them in the same commit as a decoder change).
 
 ---
 
@@ -88,7 +87,7 @@ When the canary fails:
 
 Goal: obtain structured events (start/end datetime, title, description, location) as JSON.
 
-- [x] **Reverse-engineer acquisition.** Done — see `.tmp/phase1-findings.md`. `POST /open/data` is a stateless JSON API (no auth); protocol documented above.
+- [x] **Reverse-engineer acquisition.** Done — see `docs/protocol.md`. `POST /open/data` is a stateless JSON API (no auth); protocol documented above.
 - [x] **Decision: direct `fetch` of `/open/data`.** No headless browser.
 - [x] Implement the fetcher (`internal/fetch`): build the `keys` blob for the window (current month → +12 months), POST, return the raw body.
 - [x] Decode `set` ops into raw events (`internal/decode`); `cmd/calendar` wires fetch→decode.
@@ -109,7 +108,7 @@ Goal: obtain structured events (start/end datetime, title, description, location
 - [x] On-disk format: per-month `data/{YYYY}-{MM}.json`, records sorted by date then UID, 2-space indent, `Date`/`first_seen` as `YYYY-MM-DD`.
 - [x] Merge logic (`archive.Merge`): upsert by `uid`, **edits overwrite**, `first_seen` set once and preserved. (Dropped `last_seen` — it churns every run and git history already records liveness.)
 - [x] Delete logic: archived event absent from the fetch **and** dated ≥ 1st of current month → **hard-removed from `data/`**; absent **and** dated < current month → kept frozen. No tombstone (git history is the record).
-- [x] **One-time backfill** (`calendar -backfill`, additive/never-deletes): seeded 242 historical events; archive now spans 2024-07 → 2026-11 (260 records).
+- [x] **One-time backfill** (`calendar -backfill`, additive/never-deletes): seeded 242 historical events; archive spans 2024-07 → 2026-11 (266 records).
 - [x] Deterministic serialization — verified: re-running produces byte-identical files (no diff on unchanged).
 - [x] Tests for merge/edit/delete (in/out-of-window), backfill, round-trip, determinism, empty-month cleanup.
 
@@ -162,10 +161,11 @@ Decisions: **cadence = every 6h** (matches the feed's refresh hint) + `workflow_
 - ~~Refresh cadence~~ → **Resolved: every 6h** (`0 */6 * * *`, `timezone: Asia/Tokyo` → 00/06/12/18 JST) + manual `workflow_dispatch`.
 - ~~Language~~ → **Resolved: Go.** The pipeline is pure HTTP+JSON with no browser need, so JS was an unnecessary constraint; earlier JS sub-tool answers (Vitest/oxlint/ical-generator) are moot.
 - ~~R2 upload mechanism~~ → **Resolved: wrangler/rclone as a CI step** (no S3 SDK in the Go binary).
-- ~~Fetch window~~ → **Resolved: 1st of current month → +12 months.** Fetch only dates ≥ 1st of current month; a one-time backfill seeds the pre-existing back-catalog (2024-06 →).
+- ~~Fetch window~~ → **Resolved: 1st of current month → +12 months.** Fetch only dates ≥ 1st of current month; a one-time backfill seeds the pre-existing back-catalog (earliest event 2024-07).
 - ~~Published scope~~ → **Resolved: live set** = current fetch window; archive preserves past events after they roll out; owner-deletions inside the window are hard-removed from `data/` (git keeps history).
 - ~~Edit handling~~ → **Resolved: overwrite** the existing record.
 - ~~Event modeling~~ → **Resolved: all-day events** (inline showtimes kept in the title text, not modeled as timed events).
 - ~~Split location/time into separate fields~~ → **Resolved: no.** Verified the source payload has only one free-text field (fields after `title` are null/empty/render metadata); location & times exist only as title substrings. Parsing them out is brittle and not worth it. `Event` keeps the full string in `Title`.
 - ~~Multiple events on one date~~ → **Resolved: split on blank lines.** The source stores one text cell per day, but owners pack multiple events into it separated by blank lines. `Normalize` splits blank-line blocks into separate all-day events (`{day-key}#{index}` UIDs); a lone `\n` stays a soft wrap within one event. Accepted heuristic limit: events separated by only a single `\n` remain one entry.
+  - **UID stability trade-off (accepted):** the `#index` is positional, so it's stable under title *edits* (the common case — the block keeps its index) but **not** under *reordering/insertion* within a multi-event day: inserting a block at the top shifts every index, so `first_seen` is misattributed and subscribers see churn on that day. Chosen deliberately because edits are far more common than intra-day reordering; multi-event days are rare (6 of 266). A content-hash UID would trade this for edit-instability instead.
 - ~~Whether a headless browser is required~~ → **Resolved: no. Direct stateless API fetch.**
