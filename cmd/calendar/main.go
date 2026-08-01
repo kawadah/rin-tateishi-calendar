@@ -65,6 +65,15 @@ func run(backfill bool) error {
 	}
 	events := event.Normalize(raw)
 
+	// Guard against silent breakage: a normal run over a 13-month window should
+	// always find events. Zero means the source or protocol likely changed, so
+	// fail loudly *before* the merge — otherwise the delete rule would wipe every
+	// in-window record. (Backfill may legitimately hit sparse ranges.)
+	if !backfill && len(events) == 0 {
+		return fmt.Errorf("no events decoded for the live window (%04d-%02d..%04d-%02d) — source or protocol may have changed",
+			from.Year, from.Month, to.Year, to.Month)
+	}
+
 	store := archive.NewStore(dataDir)
 	records, err := store.Load()
 	if err != nil {

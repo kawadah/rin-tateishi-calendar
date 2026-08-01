@@ -1,7 +1,11 @@
 package fetch
 
 import (
+	"context"
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -69,5 +73,48 @@ func TestBuildKeys(t *testing.T) {
 	}
 	if got := payload.Data[1][0].(string); got != "cald-231613-2026-8-1" {
 		t.Errorf("first day key = %q, want cald-231613-2026-8-1", got)
+	}
+}
+
+func TestFetchRetriesOn5xx(t *testing.T) {
+	var calls atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		if calls.Add(1) == 1 {
+			w.WriteHeader(http.StatusServiceUnavailable) // first attempt fails
+			return
+		}
+		_, _ = w.Write([]byte(`[]`))
+	}))
+	defer srv.Close()
+
+	c := New(231613)
+	c.Endpoint = srv.URL
+	body, err := c.Fetch(context.Background(), Month{2026, 8}, Month{2026, 8})
+	if err != nil {
+		t.Fatalf("Fetch: %v", err)
+	}
+	if string(body) != "[]" {
+		t.Errorf("body = %q, want []", body)
+	}
+	if got := calls.Load(); got != 2 {
+		t.Errorf("made %d calls, want 2 (one retry)", got)
+	}
+}
+
+func TestFetchNoRetryOn4xx(t *testing.T) {
+	var calls atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		calls.Add(1)
+		w.WriteHeader(http.StatusBadRequest)
+	}))
+	defer srv.Close()
+
+	c := New(231613)
+	c.Endpoint = srv.URL
+	if _, err := c.Fetch(context.Background(), Month{2026, 8}, Month{2026, 8}); err == nil {
+		t.Fatal("expected error on 4xx")
+	}
+	if got := calls.Load(); got != 1 {
+		t.Errorf("made %d calls, want 1 (no retry on 4xx)", got)
 	}
 }

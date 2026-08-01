@@ -25,6 +25,12 @@ const DefaultEndpoint = "https://freecalend.com/open/data"
 // server the client has nothing cached, so it returns the full event data.
 const staleTimestamp = "1602144014"
 
+// Retry policy for transient failures (transport errors and 5xx).
+const (
+	maxAttempts  = 3
+	retryBackoff = 500 * time.Millisecond
+)
+
 // Month identifies a calendar month.
 type Month struct {
 	Year  int
@@ -94,39 +100,64 @@ func buildKeys(memberNo int, ms []Month) (string, error) {
 }
 
 // Fetch requests all events in [from, to] and returns the raw response body.
+// Transient failures (transport errors and 5xx) are retried with backoff.
 func (c *Client) Fetch(ctx context.Context, from, to Month) ([]byte, error) {
 	keys, err := buildKeys(c.MemberNo, monthsBetween(from, to))
 	if err != nil {
 		return nil, fmt.Errorf("build keys: %w", err)
 	}
-	form := url.Values{
+	encoded := url.Values{
 		"target_mem_no": {strconv.Itoa(c.MemberNo)},
 		"version":       {"2"},
 		"mem_no":        {"0"},
 		"keys":          {keys},
 		"dokisuru":      {"sisi"},
 		"fversion":      {"20"},
+	}.Encode()
+
+	var lastErr error
+	for attempt := 1; attempt <= maxAttempts; attempt++ {
+		if attempt > 1 {
+			select {
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			case <-time.After(retryBackoff * time.Duration(1<<(attempt-2))):
+			}
+		}
+		body, status, err := c.do(ctx, encoded)
+		switch {
+		case err != nil:
+			lastErr = err
+		case status == http.StatusOK:
+			return body, nil
+		case status >= 500:
+			lastErr = fmt.Errorf("status %d: %s", status, truncate(body, 200))
+		default: // 4xx and other non-retryable statuses
+			return nil, fmt.Errorf("status %d: %s", status, truncate(body, 200))
+		}
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.Endpoint, strings.NewReader(form.Encode()))
+	return nil, fmt.Errorf("after %d attempts: %w", maxAttempts, lastErr)
+}
+
+// do performs a single request and returns the body and status code.
+func (c *Client) do(ctx context.Context, encodedForm string) (body []byte, status int, err error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.Endpoint, strings.NewReader(encodedForm))
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8")
 
 	resp, err := c.HTTP.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	body, err := io.ReadAll(resp.Body)
+	body, err = io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("unexpected status %d: %s", resp.StatusCode, truncate(body, 200))
-	}
-	return body, nil
+	return body, resp.StatusCode, nil
 }
 
 func truncate(b []byte, n int) string {
