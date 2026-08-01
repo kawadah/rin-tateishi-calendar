@@ -97,12 +97,12 @@ Goal: obtain structured events (start/end datetime, title, description, location
 
 ## Phase 2 — Parsing & normalization
 
-- [ ] Define an internal `CalendarEvent` struct (uid, title, date, allDay, description, location, url, lastModified).
-- [ ] Parse raw source data into `[]CalendarEvent`.
-- [ ] Timezone handling: source is JST (`Asia/Tokyo`). Emit **all-day** events (`DATE` values) keyed to the JST calendar day from the API `dateMeta`.
-- [ ] Stable `UID` generation (deterministic per event so subscribers get updates, not duplicates).
-- [ ] Defensive parsing: skip/log malformed entries rather than failing the whole run.
-- [ ] Unit tests against the Phase 1 fixture.
+- [x] Define the `event.Event` struct (uid, date, title, allDay). Leaner than first sketched: per the all-day decision the full source string stays in `title`, so description/location/url aren't split out.
+- [x] `event.Normalize` parses `[]decode.RawEvent` → sorted `[]Event`.
+- [x] Timezone: dates are JST (`Asia/Tokyo`) calendar days from the source day-key; all-day, so no conversion needed.
+- [x] Stable `UID` (`{day-key}@freecalend.com`) so edited titles update in place instead of duplicating.
+- [x] Defensive parsing: empty-after-clean titles skipped; malformed ops already skipped in decode.
+- [x] Unit tests for `cleanTitle` and `Normalize` (whitespace, skip, sort, UID/date).
 
 ## Phase 3 — Persistence & archive (durable store)
 
