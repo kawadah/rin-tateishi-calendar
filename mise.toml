@@ -2,3 +2,7 @@
 auto_install = false
 minimum_release_age = "3d"
 pin = true
+
+[tools]
+go = "1.26.4"
+golangci-lint = "2.12.2"
