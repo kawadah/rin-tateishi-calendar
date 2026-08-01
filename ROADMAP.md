@@ -125,12 +125,13 @@ Goal: obtain structured events (start/end datetime, title, description, location
 
 Decisions: **cadence = every 6h** (matches the feed's refresh hint) + `workflow_dispatch`; **access = custom domain** on the R2 bucket; **upload = wrangler**.
 
-- [ ] GitHub Actions workflow: `schedule` (cron `0 */6 * * *`) + `workflow_dispatch`.
-- [ ] Steps: checkout → setup mise (go) → run pipeline → produce `dist/calendar.ics` **and updated `data/` archive**.
-- [ ] **Commit the archive** back to the repo when `data/` changes (bot commit; no-op when unchanged — the archive is deterministic).
-- [ ] **Upload `dist/calendar.ics` to R2 via `wrangler r2 object put`** with `Content-Type: text/calendar; charset=utf-8` and a sensible `Cache-Control`. Auth from GitHub Secrets (`CLOUDFLARE_API_TOKEN`, account id).
-- [ ] Skip upload when the `.ics` is unchanged (hash compare) to minimize churn.
-- [ ] Parameterize bucket/key/account via repo **vars/secrets** so no infra values live in the repo.
+- [x] GitHub Actions workflow (`.github/workflows/publish.yml`): `schedule` (cron `0 */6 * * *`) + `workflow_dispatch`, serialized via `concurrency`.
+- [x] Steps: checkout → mise-action → `mise run pipeline` → `dist/calendar.ics` **and updated `data/` archive**.
+- [x] **Commit the archive** back when `data/` changes (bot commit, `--rebase --autostash` before push; no-op when unchanged).
+- [x] **Upload `dist/calendar.ics` to R2 via `wrangler r2 object put`** with `Content-Type: text/calendar; charset=utf-8` and `Cache-Control: public, max-age=3600`.
+- [x] Skip upload when the published object is byte-identical (compares via `wrangler r2 object get`).
+- [x] Parameterized via secrets (`CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`) + vars (`R2_BUCKET`, `R2_OBJECT_KEY`).
+- [ ] **Blocked on user:** create R2 bucket + custom domain, scoped API token, and set the secrets/vars (see below). Then verify a real run + subscribe in Google/Apple Calendar.
 
 ### Setup the user must do (Cloudflare + GitHub) — values I never handle
 - Create the R2 bucket; attach the **custom domain** (Cloudflare dashboard → R2 → bucket → Settings → Custom Domains). Subscribers point at `https://<domain>/<key>`.
