@@ -6,3 +6,16 @@
 
 !.claude/
 .claude/worktrees/
+
+# Committed config that would otherwise be caught by the .* rule above
+!.golangci.yml
+!.env.example
+
+# Build output
+/dist/
+/bin/
+
+# Compiled command binaries (go build ./cmd/<x> emits ./<x>)
+/calendar
+/inspect-har
+/verify-protocol
