@@ -13,22 +13,13 @@ import (
 	"os"
 	"time"
 
+	"github.com/kawadah/rin-tateishi-calendar/internal/config"
 	"github.com/kawadah/rin-tateishi-calendar/internal/decode"
 	"github.com/kawadah/rin-tateishi-calendar/internal/event"
 	"github.com/kawadah/rin-tateishi-calendar/internal/fetch"
 )
 
-const (
-	memberNo    = 231613
-	minEvents   = 30 // this window historically holds ~150; wide margin vs. deletions
-	failureDump = "verify-protocol-failure.json"
-)
-
-// A past window that should stay densely populated.
-var (
-	fromMonth = fetch.Month{Year: 2024, Month: 7}
-	toMonth   = fetch.Month{Year: 2025, Month: 6}
-)
+const failureDump = "verify-protocol-failure.json"
 
 func main() {
 	if err := run(); err != nil {
@@ -38,15 +29,20 @@ func main() {
 }
 
 func run() error {
-	client := fetch.New(memberNo)
+	cfg, err := config.FromEnv()
+	if err != nil {
+		return err
+	}
+
+	client := fetch.New(cfg.MemberNo)
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
-	body, err := client.Fetch(ctx, fromMonth, toMonth)
+	body, err := client.Fetch(ctx, cfg.CanaryFrom, cfg.CanaryTo)
 	if err != nil {
 		return fmt.Errorf("fetch: %w", err)
 	}
-	count, err := check(body, minEvents)
+	count, err := check(body, cfg.CanaryMinEvents)
 	if err != nil {
 		if werr := os.WriteFile(failureDump, body, 0o644); werr == nil {
 			fmt.Fprintf(os.Stderr, "wrote raw response to %s\n", failureDump)
@@ -54,7 +50,7 @@ func run() error {
 		return err
 	}
 	fmt.Printf("protocol OK: decoded %d events for %04d-%02d..%04d-%02d (>= %d)\n",
-		count, fromMonth.Year, fromMonth.Month, toMonth.Year, toMonth.Month, minEvents)
+		count, cfg.CanaryFrom.Year, cfg.CanaryFrom.Month, cfg.CanaryTo.Year, cfg.CanaryTo.Month, cfg.CanaryMinEvents)
 	return nil
 }
 

@@ -16,8 +16,16 @@ func sample() []event.Event {
 	}
 }
 
+var sampleMeta = Metadata{
+	Name:        "立石凛 スケジュール",
+	Description: "test",
+	ProductID:   "-//test//test//JA",
+	Timezone:    "Asia/Tokyo",
+	RefreshTTL:  "PT6H",
+}
+
 func TestBuildStructure(t *testing.T) {
-	out := Build(sample())
+	out := Build(sample(), sampleMeta)
 	for _, want := range []string{
 		"BEGIN:VCALENDAR",
 		"METHOD:PUBLISH",
@@ -40,15 +48,15 @@ func TestBuildStructure(t *testing.T) {
 }
 
 func TestBuildDeterministic(t *testing.T) {
-	first := Build(sample())
-	second := Build(sample())
+	first := Build(sample(), sampleMeta)
+	second := Build(sample(), sampleMeta)
 	if first != second {
 		t.Error("Build is not deterministic across calls")
 	}
 }
 
 func TestBuildParsesBack(t *testing.T) {
-	out := Build(sample())
+	out := Build(sample(), sampleMeta)
 	cal, err := goics.ParseCalendar(strings.NewReader(out))
 	if err != nil {
 		t.Fatalf("output is not valid iCalendar: %v", err)

@@ -14,30 +14,31 @@ import (
 	"github.com/kawadah/rin-tateishi-calendar/internal/event"
 )
 
-const (
-	calName    = "立石凛 スケジュール"
-	calDesc    = "立石凛さんの公式カレンダー（freecalend）の非公式ミラー"
-	productID  = "-//rin-tateishi-calendar//freecalend mirror//JA"
-	timezone   = "Asia/Tokyo"
-	refreshTTL = "PT6H"
-)
+// Metadata is the calendar-level information for the feed.
+type Metadata struct {
+	Name        string
+	Description string
+	ProductID   string
+	Timezone    string
+	RefreshTTL  string
+}
 
 // dtStamp is a fixed timestamp for DTSTAMP, keeping output deterministic.
 var dtStamp = time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)
 
 // Build renders the given live events as an iCalendar document. Events are
 // all-day and expected already sorted (event.Normalize output).
-func Build(events []event.Event) string {
+func Build(events []event.Event, meta Metadata) string {
 	cal := goics.NewCalendar()
 	cal.SetMethod(goics.MethodPublish)
-	cal.SetProductId(productID)
-	cal.SetName(calName)
-	cal.SetXWRCalName(calName)
-	cal.SetDescription(calDesc)
-	cal.SetXWRCalDesc(calDesc)
-	cal.SetXWRTimezone(timezone)
-	cal.SetRefreshInterval(refreshTTL)
-	cal.SetXPublishedTTL(refreshTTL)
+	cal.SetProductId(meta.ProductID)
+	cal.SetName(meta.Name)
+	cal.SetXWRCalName(meta.Name)
+	cal.SetDescription(meta.Description)
+	cal.SetXWRCalDesc(meta.Description)
+	cal.SetXWRTimezone(meta.Timezone)
+	cal.SetRefreshInterval(meta.RefreshTTL)
+	cal.SetXPublishedTTL(meta.RefreshTTL)
 
 	for _, e := range events {
 		start := time.Date(e.Date.Year, time.Month(e.Date.Month), e.Date.Day, 0, 0, 0, 0, time.UTC)

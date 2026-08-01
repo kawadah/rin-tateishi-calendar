@@ -1,8 +1,8 @@
 // Command calendar runs the pipeline: fetch the source calendar from
-// freecalend, update the durable archive under data/, and (later) regenerate
-// the live .ics for upload.
+// freecalend, update the durable archive under data/, and regenerate the live
+// .ics for upload.
 //
-// Normal run: fetch [current month, +12] and merge into the archive.
+// Normal run: fetch [current month, +MonthsAhead] and merge into the archive.
 // -backfill: one-time seed of the historical back-catalog (additive; no
 // deletes), then exit.
 package main
@@ -13,21 +13,14 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strconv"
 	"time"
 
 	"github.com/kawadah/rin-tateishi-calendar/internal/archive"
+	"github.com/kawadah/rin-tateishi-calendar/internal/config"
 	"github.com/kawadah/rin-tateishi-calendar/internal/decode"
 	"github.com/kawadah/rin-tateishi-calendar/internal/event"
 	"github.com/kawadah/rin-tateishi-calendar/internal/fetch"
 	"github.com/kawadah/rin-tateishi-calendar/internal/ics"
-)
-
-const (
-	defaultMemberNo = 231613
-	monthsAhead     = 12
-	dataDir         = "data"
-	icsPath         = "dist/calendar.ics"
 )
 
 // backfillStart is the earliest month seeded by -backfill (before the first
@@ -44,14 +37,14 @@ func main() {
 }
 
 func run(backfill bool) error {
-	memberNo, err := memberNoFromEnv()
+	cfg, err := config.FromEnv()
 	if err != nil {
 		return err
 	}
 	now := time.Now()
-	from, to := fetchRange(now, backfill)
+	from, to := fetchRange(cfg, now, backfill)
 
-	client := fetch.New(memberNo)
+	client := fetch.New(cfg.MemberNo)
 	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
 	defer cancel()
 
@@ -65,7 +58,7 @@ func run(backfill bool) error {
 	}
 	events := event.Normalize(raw)
 
-	// Guard against silent breakage: a normal run over a 13-month window should
+	// Guard against silent breakage: a normal run over the live window should
 	// always find events. Zero means the source or protocol likely changed, so
 	// fail loudly *before* the merge — otherwise the delete rule would wipe every
 	// in-window record. (Backfill may legitimately hit sparse ranges.)
@@ -74,7 +67,7 @@ func run(backfill bool) error {
 			from.Year, from.Month, to.Year, to.Month)
 	}
 
-	store := archive.NewStore(dataDir)
+	store := archive.NewStore(cfg.DataDir)
 	records, err := store.Load()
 	if err != nil {
 		return fmt.Errorf("load archive: %w", err)
@@ -91,7 +84,7 @@ func run(backfill bool) error {
 	// The .ics mirrors only the live set (current fetch window); backfill just
 	// seeds history and does not regenerate the feed.
 	if !backfill {
-		if err := writeICS(events); err != nil {
+		if err := writeICS(cfg, events); err != nil {
 			return fmt.Errorf("write ics: %w", err)
 		}
 	}
@@ -105,31 +98,26 @@ func run(backfill bool) error {
 	return nil
 }
 
-func writeICS(events []event.Event) error {
-	if err := os.MkdirAll(filepath.Dir(icsPath), 0o755); err != nil {
+func writeICS(cfg config.Config, events []event.Event) error {
+	if err := os.MkdirAll(filepath.Dir(cfg.ICSPath), 0o755); err != nil {
 		return err
 	}
-	return os.WriteFile(icsPath, []byte(ics.Build(events)), 0o644)
+	meta := ics.Metadata{
+		Name:        cfg.CalendarName,
+		Description: cfg.CalendarDesc,
+		ProductID:   cfg.ProductID,
+		Timezone:    cfg.Timezone,
+		RefreshTTL:  cfg.RefreshTTL,
+	}
+	return os.WriteFile(cfg.ICSPath, []byte(ics.Build(events, meta)), 0o644)
 }
 
-// fetchRange returns the window to fetch: the current-month+12 live window, or
+// fetchRange returns the window to fetch: the live window, or
 // [backfillStart, last month] for a one-time backfill.
-func fetchRange(now time.Time, backfill bool) (from, to fetch.Month) {
+func fetchRange(cfg config.Config, now time.Time, backfill bool) (from, to fetch.Month) {
 	if backfill {
 		lastMonth := fetch.Month{Year: now.Year(), Month: int(now.Month())}
 		return backfillStart, lastMonth.Add(-1)
 	}
-	return fetch.Window(now, monthsAhead)
-}
-
-func memberNoFromEnv() (int, error) {
-	v := os.Getenv("SOURCE_MEMBER_NO")
-	if v == "" {
-		return defaultMemberNo, nil
-	}
-	n, err := strconv.Atoi(v)
-	if err != nil {
-		return 0, fmt.Errorf("invalid SOURCE_MEMBER_NO %q: %w", v, err)
-	}
-	return n, nil
+	return fetch.Window(now, cfg.MonthsAhead)
 }
