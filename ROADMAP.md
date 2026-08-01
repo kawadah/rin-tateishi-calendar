@@ -106,12 +106,12 @@ Goal: obtain structured events (start/end datetime, title, description, location
 
 ## Phase 3 — Persistence & archive (durable store)
 
-- [ ] Define the on-disk archive format: per-month JSON under `data/` (`data/{YYYY}-{MM}.json`), records sorted deterministically.
-- [ ] Merge logic: upsert current events by `uid`; set `first_seen` on new, bump `last_seen` on seen. **Edits overwrite** the existing record.
-- [ ] Delete logic: archived event absent from the fetch **and** dated ≥ 1st of current month → owner deleted it → **hard-remove from `data/`**. Absent **and** dated < 1st of current month → keep untouched. (No tombstone flag — git history is the record.)
-- [ ] **One-time backfill:** a separate seeding run fetches the pre-existing back-catalog (2024-06 → last month) once to populate the archive, then normal runs use the current-month+12 window.
-- [ ] Deterministic serialization (stable key order, sorted records) so unchanged data yields no diff.
-- [ ] Tests for merge/edit/delete (in-window vs. out-of-window) against fixtures.
+- [x] On-disk format: per-month `data/{YYYY}-{MM}.json`, records sorted by date then UID, 2-space indent, `Date`/`first_seen` as `YYYY-MM-DD`.
+- [x] Merge logic (`archive.Merge`): upsert by `uid`, **edits overwrite**, `first_seen` set once and preserved. (Dropped `last_seen` — it churns every run and git history already records liveness.)
+- [x] Delete logic: archived event absent from the fetch **and** dated ≥ 1st of current month → **hard-removed from `data/`**; absent **and** dated < current month → kept frozen. No tombstone (git history is the record).
+- [x] **One-time backfill** (`calendar -backfill`, additive/never-deletes): seeded 242 historical events; archive now spans 2024-07 → 2026-11 (260 records).
+- [x] Deterministic serialization — verified: re-running produces byte-identical files (no diff on unchanged).
+- [x] Tests for merge/edit/delete (in/out-of-window), backfill, round-trip, determinism, empty-month cleanup.
 
 ## Phase 4 — ICS generation (live set)
 
