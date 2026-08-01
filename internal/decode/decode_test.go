@@ -64,3 +64,31 @@ func TestEventsRejectsNonArray(t *testing.T) {
 		t.Fatal("expected error for non-array response")
 	}
 }
+
+func TestEventsSkipsShortMonthAggregate(t *testing.T) {
+	// A 3-element month-level aggregate must be skipped, not errored.
+	body := []byte(`[["set","[\"hda\",\"on\",\"cald-231613-2026-8\"]"]]`)
+	events, err := Events(body)
+	if err != nil {
+		t.Fatalf("Events: %v", err)
+	}
+	if len(events) != 0 {
+		t.Fatalf("got %d events, want 0", len(events))
+	}
+}
+
+func TestEventsErrorsOnMalformedDayEvent(t *testing.T) {
+	// A day key with a non-string title is real structural breakage → error.
+	body := []byte(`[["set","[\"hda\",\"on\",\"cald-231613-2026-8-8\",[[2026,8,8],123]]"]]`)
+	if _, err := Events(body); err == nil {
+		t.Fatal("expected error for malformed day-event title")
+	}
+}
+
+func TestEventsErrorsOnDayEventMissingPayload(t *testing.T) {
+	// A day key with fewer than 4 inner elements is a malformed day event.
+	body := []byte(`[["set","[\"hda\",\"on\",\"cald-231613-2026-8-8\"]"]]`)
+	if _, err := Events(body); err == nil {
+		t.Fatal("expected error for day event missing payload")
+	}
+}

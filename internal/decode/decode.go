@@ -72,7 +72,9 @@ func decodeSet(payload json.RawMessage) (ev RawEvent, ok bool, err error) {
 	if err := json.Unmarshal([]byte(innerStr), &inner); err != nil {
 		return RawEvent{}, false, fmt.Errorf("set inner is not an array: %w", err)
 	}
-	if len(inner) < 4 {
+	// Classify by key first: a non-day key (e.g. a 3-element month aggregate) is
+	// skipped, not treated as a malformed day event.
+	if len(inner) < 3 {
 		return RawEvent{}, false, fmt.Errorf("set inner too short (%d elements)", len(inner))
 	}
 	var key string
@@ -82,6 +84,9 @@ func decodeSet(payload json.RawMessage) (ev RawEvent, ok bool, err error) {
 	year, month, day, isDay := parseDayKey(key)
 	if !isDay {
 		return RawEvent{}, false, nil // month-level or other non-day key: skip
+	}
+	if len(inner) < 4 {
+		return RawEvent{}, false, fmt.Errorf("day event %s missing payload", key)
 	}
 	var fields []json.RawMessage
 	if err := json.Unmarshal(inner[3], &fields); err != nil {
