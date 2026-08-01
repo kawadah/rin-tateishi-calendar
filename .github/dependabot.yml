@@ -5,14 +5,12 @@ updates:
     directory: /
     schedule:
       interval: daily
-    # 3-day cooldown is intentional; zizmor's dependabot-cooldown audit prefers >= 7.
     cooldown:
-      default-days: 3 # zizmor: ignore[dependabot-cooldown]
+      default-days: 3
 
   - package-ecosystem: gomod
     directory: /
     schedule:
       interval: daily
-    # 3-day cooldown is intentional; zizmor's dependabot-cooldown audit prefers >= 7.
     cooldown:
-      default-days: 3 # zizmor: ignore[dependabot-cooldown]
+      default-days: 3

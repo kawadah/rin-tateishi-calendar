@@ -1,0 +1,6 @@
+# zizmor configuration — https://docs.zizmor.sh/configuration/
+rules:
+  dependabot-cooldown:
+    config:
+      # Accept our intentional 3-day cooldown (zizmor's default minimum is 7).
+      days: 3
