@@ -80,7 +80,7 @@ When the canary fails:
 - [x] Pin the toolchain into project `mise.toml`: `go@1.26.4`, `golangci-lint@2.12.2`.
 - [x] `go mod init github.com/kawadah/rin-tateishi-calendar`; layout: `cmd/` (`calendar`, `inspect-har`, `verify-protocol`), `internal/` (fetch, decode, archive, ics, upload), `testdata/`, `docs/`. _(internal/* dirs are populated per phase.)_
 - [x] **Tools confirmed:** `golangci-lint` (v2 config, default `standard` + misspell/unconvert, gofmt/goimports), `golang-ical` for ICS, stdlib `testing` + `testdata`.
-- [x] Makefile targets: `build`, `test`, `lint`, `fmt`, `tidy`, `run`.
+- [x] mise tasks: `build`, `test`, `lint`, `fmt`, `tidy`, `pipeline` (run via `mise run <task>`).
 - [x] `.env.example` for secrets (R2 credentials, source member no).
 - Module path assumes remote `github.com/kawadah/...` — adjust if the real remote differs.
 

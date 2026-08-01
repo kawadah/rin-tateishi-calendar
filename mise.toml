@@ -6,3 +6,27 @@ pin = true
 [tools]
 go = "1.26.4"
 golangci-lint = "2.12.2"
+
+[tasks.build]
+description = "Compile all packages"
+run = "go build ./..."
+
+[tasks.test]
+description = "Run the test suite"
+run = "go test ./..."
+
+[tasks.lint]
+description = "Run golangci-lint"
+run = "golangci-lint run"
+
+[tasks.fmt]
+description = "Format the code"
+run = "golangci-lint fmt"
+
+[tasks.tidy]
+description = "Tidy go.mod/go.sum"
+run = "go mod tidy"
+
+[tasks.pipeline]
+description = "Run the full pipeline once (fetch -> archive -> ics)"
+run = "go run ./cmd/calendar"
