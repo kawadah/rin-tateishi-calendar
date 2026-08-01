@@ -149,10 +149,10 @@ Decisions: **cadence = every 6h** (matches the feed's refresh hint) + `workflow_
 
 ## Phase 7 — Polish & docs
 
-- [ ] README: what it is, the subscription URL, how to subscribe (Google/Apple/Outlook), update cadence.
-- [ ] `CONTRIBUTING.md`: local dev, running the pipeline, updating fixtures.
-- [ ] License and attribution to the source.
-- [ ] Optional: a tiny landing page with the "Add to calendar" link.
+- [x] README: what it is, how to subscribe (Google/Apple/Outlook), cadence, layout, attribution. _(Subscribe URL is a placeholder until R2 is set up.)_
+- [x] `CONTRIBUTING.md`: local dev, tasks, tests/fixtures, archive handling, re-RE pointer, commit conventions.
+- [x] License (MIT, code only) and source attribution.
+- [ ] Optional: a tiny landing page with an "Add to calendar" link. _(Not done — optional; revisit after the R2 URL exists.)_
 
 ---
 

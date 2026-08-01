@@ -87,3 +87,8 @@ mise run pipeline -- -backfill
 Calendar data belongs to its author and is sourced from the public
 [freecalend](https://freecalend.com/open/mem231613) page. This project is an
 unofficial mirror.
+
+## License
+
+Project code is [MIT licensed](LICENSE). The license covers the code only, not
+the calendar data, which remains the property of its author.
