@@ -140,12 +140,12 @@ Decisions: **cadence = every 6h** (matches the feed's refresh hint) + `workflow_
 
 ## Phase 6 — Reliability & observability
 
-- [ ] Fail the CI job loudly on zero events or parse errors (guards against silent breakage when the source site changes).
-- [ ] **Protocol canary:** schedule `cmd/verify-protocol` (see *Protocol maintenance*) as a separate job; on failure, alert and upload the raw response artifact.
-- [ ] Notify on failure (GitHub Actions failure → email, or a Slack/Discord webhook).
-- [ ] Log a run summary (events found, date range, output size).
-- [ ] Retry/backoff on transient network errors.
-- [ ] Ship `docs/reverse-engineering.md` (the re-RE runbook) and `cmd/inspect-har` so recovery is reproducible.
+- [x] Fail loudly on zero events — the guard runs *before* the merge so a broken fetch can't wipe the archive.
+- [x] **Protocol canary** (`cmd/verify-protocol`): checks a dense past window decodes ≥30 events; runs as an independent scheduled job, uploads the raw response artifact on failure.
+- [x] Notify on failure — GitHub's default job-failure email (canary or publish); artifact attached for inspection.
+- [x] Log a run summary (event count + date range).
+- [x] Retry/backoff on transient fetch errors (transport/5xx); 4xx non-retryable.
+- [x] Ship `docs/reverse-engineering.md` (re-RE runbook) and `cmd/inspect-har`.
 
 ## Phase 7 — Polish & docs
 
