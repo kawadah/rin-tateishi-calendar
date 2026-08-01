@@ -1,0 +1,54 @@
+name: Dependabot PRs
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened]
+
+permissions: {}
+
+jobs:
+  dependabot-metadata:
+    name: Fetch metadata
+    runs-on: ubuntu-latest
+    if: |
+      github.event.pull_request.user.login == 'dependabot[bot]' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    permissions:
+      pull-requests: read
+    outputs:
+      dependency-type: ${{ steps.dependabot-metadata.outputs.dependency-type }}
+      update-type: ${{ steps.dependabot-metadata.outputs.update-type }}
+      package-ecosystem: ${{ steps.dependabot-metadata.outputs.package-ecosystem }}
+    steps:
+      - name: Fetch Dependabot metadata
+        id: dependabot-metadata
+        uses: dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98 # v3.1.0
+
+  # Auto-merge everything except major bumps (which need manual review) and
+  # direct production dependencies (other than GitHub Actions).
+  auto-merge:
+    name: Auto-merge
+    runs-on: ubuntu-latest
+    needs: dependabot-metadata
+    if: |
+      needs.dependabot-metadata.result == 'success' &&
+      needs.dependabot-metadata.outputs.dependency-type != '' &&
+      needs.dependabot-metadata.outputs.update-type != '' &&
+      needs.dependabot-metadata.outputs.update-type != 'version-update:semver-major' &&
+      (needs.dependabot-metadata.outputs.dependency-type != 'direct:production' ||
+       needs.dependabot-metadata.outputs.package-ecosystem == 'github-actions')
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Approve
+        run: gh pr review --approve "$PR_URL"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+      - name: Enable auto-merge
+        run: gh pr merge --auto --squash "$PR_URL"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
