@@ -18,8 +18,40 @@ mise run fmt          # format
 Other tasks: `mise run build`, `mise run tidy`, `mise run verify-protocol`,
 `mise run inspect-har <file.har>`. Run `mise tasks` to list them.
 
-The code is a small Go program; see the layout table in the [README](README.md)
-and the design rationale in [ROADMAP.md](ROADMAP.md).
+## How it works
+
+The pipeline is a small Go program, run on a schedule by GitHub Actions:
+
+```
+fetch /open/data → decode → normalize → merge archive (data/) → render .ics → upload to R2
+```
+
+- **Fetch** the live window (current month … +12 months) from freecalend's
+  stateless JSON API (see [docs/protocol.md](docs/protocol.md)).
+- **Archive** (`data/{YYYY}-{MM}.json`) — a durable record of every event ever
+  seen, kept even after events roll out of the live window. Owner deletions
+  inside the window are removed; past events are frozen.
+- **`.ics`** mirrors only the live set (the current fetch window); all-day
+  events, dates in `Asia/Tokyo`.
+
+Design rationale and decisions are in [ROADMAP.md](ROADMAP.md).
+
+### Layout
+
+| Path                     | Purpose |
+| ------------------------ | ------- |
+| `cmd/calendar`           | pipeline entrypoint (`-backfill` mode) |
+| `cmd/verify-protocol`    | protocol canary |
+| `cmd/inspect-har`        | HAR data-request locator |
+| `internal/config`        | centralized settings (member, name, window, …) |
+| `internal/fetch`         | `/open/data` client |
+| `internal/decode`        | response → raw events |
+| `internal/event`         | normalize, split multi-event cells, all-day model |
+| `internal/archive`       | per-month store + merge/delete rules |
+| `internal/ics`           | RFC 5545 feed |
+| `data/`                  | durable event archive |
+| `docs/`                  | protocol spec & re-RE runbook |
+| `.github/workflows/`     | publish + check workflows |
 
 ## Tests & fixtures
 
