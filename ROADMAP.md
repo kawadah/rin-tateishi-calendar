@@ -161,4 +161,5 @@ Goal: obtain structured events (start/end datetime, title, description, location
 - ~~Published scope~~ → **Resolved: live set** = current fetch window; archive preserves past events after they roll out; owner-deletions inside the window are hard-removed from `data/` (git keeps history).
 - ~~Edit handling~~ → **Resolved: overwrite** the existing record.
 - ~~Event modeling~~ → **Resolved: all-day events** (inline showtimes kept in the title text, not modeled as timed events).
+- ~~Split location/time into separate fields~~ → **Resolved: no.** Verified the source payload has only one free-text field (fields after `title` are null/empty/render metadata); location & times exist only as title substrings. Parsing them out is brittle and not worth it. `Event` keeps the full string in `Title`.
 - ~~Whether a headless browser is required~~ → **Resolved: no. Direct stateless API fetch.**
