@@ -12,8 +12,8 @@ name: Publish calendar
 on:
   schedule:
     # Every 6 hours at 00/06/12/18 JST (Asia/Tokyo has no DST).
-    - cron: "0 */6 * * *"
-      timezone: "Asia/Tokyo"
+    - cron: 0 */6 * * *
+      timezone: Asia/Tokyo
   workflow_dispatch:
 
 # Serialize runs so the archive commit-back never races another run.
@@ -38,7 +38,7 @@ jobs:
       - name: Set up toolchain (mise)
         uses: jdx/mise-action@7e36c90d9ab29c415a2384db3006f3ec8a8cc654 # v4.2.4
 
-      - name: Run pipeline (fetch -> archive -> ics)
+      - name: Run pipeline # fetch -> archive -> ics
         run: mise run pipeline
 
       - name: Commit archive changes
@@ -57,7 +57,7 @@ jobs:
           git pull --rebase --autostash origin "${GITHUB_REF_NAME}"
           git push origin "HEAD:${GITHUB_REF_NAME}"
 
-      - name: Upload .ics to R2 (skip if unchanged)
+      - name: Upload .ics to R2, skip if unchanged
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
