@@ -11,6 +11,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/kawadah/rin-tateishi-calendar/internal/config"
@@ -42,21 +43,23 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("fetch: %w", err)
 	}
-	count, err := check(body, cfg.CanaryMinEvents)
+	count, err := check(body, cfg.CanaryMinEvents, cfg.CanaryPinnedDate, cfg.CanaryPinnedTitleSubstr)
 	if err != nil {
 		if werr := os.WriteFile(failureDump, body, 0o644); werr == nil {
 			fmt.Fprintf(os.Stderr, "wrote raw response to %s\n", failureDump)
 		}
 		return err
 	}
-	fmt.Printf("protocol OK: decoded %d events for %04d-%02d..%04d-%02d (>= %d)\n",
-		count, cfg.CanaryFrom.Year, cfg.CanaryFrom.Month, cfg.CanaryTo.Year, cfg.CanaryTo.Month, cfg.CanaryMinEvents)
+	fmt.Printf("protocol OK: decoded %d events for %04d-%02d..%04d-%02d (>= %d), pinned %s present\n",
+		count, cfg.CanaryFrom.Year, cfg.CanaryFrom.Month, cfg.CanaryTo.Year, cfg.CanaryTo.Month, cfg.CanaryMinEvents, cfg.CanaryPinnedDate)
 	return nil
 }
 
-// check decodes and normalizes the response and verifies the event count meets
-// the floor. It returns the decoded event count.
-func check(body []byte, floor int) (int, error) {
+// check decodes and normalizes the response and verifies (1) the event count
+// meets the floor and (2) the pinned event decodes with its expected title —
+// the latter catches a title-position shift the count alone would miss. It
+// returns the decoded event count.
+func check(body []byte, floor int, pinnedDate event.Date, pinnedSubstr string) (int, error) {
 	raw, err := decode.Events(body)
 	if err != nil {
 		return 0, fmt.Errorf("response structure changed: %w", err)
@@ -64,6 +67,16 @@ func check(body []byte, floor int) (int, error) {
 	events := event.Normalize(raw)
 	if len(events) < floor {
 		return len(events), fmt.Errorf("decoded only %d events, expected >= %d — protocol may have changed", len(events), floor)
+	}
+	found := false
+	for _, e := range events {
+		if e.Date == pinnedDate && strings.Contains(e.Title, pinnedSubstr) {
+			found = true
+			break
+		}
+	}
+	if !found {
+		return len(events), fmt.Errorf("pinned event %s with title containing %q not found — decoding may have drifted", pinnedDate, pinnedSubstr)
 	}
 	return len(events), nil
 }

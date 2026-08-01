@@ -9,6 +9,7 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/kawadah/rin-tateishi-calendar/internal/event"
 	"github.com/kawadah/rin-tateishi-calendar/internal/fetch"
 )
 
@@ -33,6 +34,10 @@ type Config struct {
 	CanaryFrom      fetch.Month
 	CanaryTo        fetch.Month
 	CanaryMinEvents int
+	// A stable past event that must decode with the expected title. Catches a
+	// title-position shift that the bare count check would miss.
+	CanaryPinnedDate        event.Date
+	CanaryPinnedTitleSubstr string
 }
 
 // Default returns the built-in configuration (member 231613, 立石凛).
@@ -50,9 +55,11 @@ func Default() Config {
 		DataDir:     "data",
 		ICSPath:     "dist/calendar.ics",
 
-		CanaryFrom:      fetch.Month{Year: 2024, Month: 7},
-		CanaryTo:        fetch.Month{Year: 2025, Month: 6},
-		CanaryMinEvents: 30,
+		CanaryFrom:              fetch.Month{Year: 2024, Month: 7},
+		CanaryTo:                fetch.Month{Year: 2025, Month: 6},
+		CanaryMinEvents:         30,
+		CanaryPinnedDate:        event.Date{Year: 2024, Month: 7, Day: 6},
+		CanaryPinnedTitleSubstr: "BCF2024",
 	}
 }
 
