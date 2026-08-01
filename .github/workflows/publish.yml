@@ -27,6 +27,7 @@ permissions: {}
 jobs:
   publish:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: write # to commit the updated data/ archive back
     steps:
@@ -59,6 +60,38 @@ jobs:
           git pull --rebase --autostash origin "${GITHUB_REF_NAME}"
           git push origin "HEAD:${GITHUB_REF_NAME}"
 
+      - name: Upload .ics artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: calendar-ics
+          path: dist/calendar.ics
+          if-no-files-found: error
+
+  # Upload runs with only read scope and no persisted git credentials, so the
+  # write-scoped GITHUB_TOKEN is never present while wrangler (and its deps) run.
+  upload:
+    needs: publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up toolchain (mise)
+        uses: jdx/mise-action@7e36c90d9ab29c415a2384db3006f3ec8a8cc654 # v4.2.4
+        with:
+          install_args: wrangler
+
+      - name: Download .ics artifact
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: calendar-ics
+          path: dist
+
       - name: Upload .ics to R2, skip if unchanged
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -74,13 +107,13 @@ jobs:
           target="${R2_BUCKET}/${R2_OBJECT_KEY}"
 
           # Skip the upload when the published object already matches.
-          if npx --yes wrangler@4 r2 object get "$target" --file current.ics --remote >/dev/null 2>&1 \
+          if mise exec -- wrangler r2 object get "$target" --file current.ics --remote >/dev/null 2>&1 \
              && cmp -s current.ics dist/calendar.ics; then
             echo "published .ics is unchanged; skipping upload"
             exit 0
           fi
 
-          npx --yes wrangler@4 r2 object put "$target" \
+          mise exec -- wrangler r2 object put "$target" \
             --file dist/calendar.ics --remote \
             --content-type "text/calendar; charset=utf-8" \
             --cache-control "public, max-age=3600"
@@ -90,6 +123,7 @@ jobs:
   # failed publish) emails the repo watchers via GitHub's default notifications.
   canary:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: read
     steps:
