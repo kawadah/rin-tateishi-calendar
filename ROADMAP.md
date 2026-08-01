@@ -30,13 +30,19 @@ Consequences for later phases:
 
 The project maintains **two outputs with different lifecycles**:
 
-1. **Durable archive (committed to the repo).** Every event ever observed is merged in and **never pruned** — kept "even after expiration"/removal from the source. Format: per-month JSON under `data/` (e.g. `data/2026-08.json`) so diffs stay small and readable. Each record carries `date`, `title` (raw source string), source `uid`, and bookkeeping (`first_seen`, `last_seen`, `removed` flag/date). This is the permanent history.
-2. **Published `.ics` (live mirror).** Contains **only what is currently live on the source** — every event the source lists right now, no arbitrary cutoff. Events that vanish from the source drop out of the `.ics` but stay in the archive (marked removed).
+1. **Durable archive (committed to the repo).** Accumulates events as they're observed and **preserves them after they roll past** (age out of the fetch window). Per-month JSON under `data/` (e.g. `data/2026-08.json`) so diffs stay small and readable. Each record carries `date`, `title` (raw source string), source `uid`, `first_seen`, `last_seen`. Git history is the ultimate backstop — anything removed from `data/` stays recoverable in commits.
+2. **Published `.ics` (live set).** The events in the **current fetch window** (1st of current month → +12 months). Rolls forward monthly; past events leave the feed but remain in the archive.
 
-### Source window ("nothing more nothing less")
-freecalend imposes **no hard viewable window** — the API returns HTTP 200 for any month and simply has no events outside the real span (verified 1990 & 2098 → empty). The effective window is therefore **exactly the months that contain events** (currently **2024-06 → 2026-11**, contiguous). So each run fetches a **rolling band wide enough to always bracket the real span** (empty months are free), and the live set = every event present. No month-count knob to tune.
+### Fetch window
+freecalend imposes no hard bound (API returns HTTP 200 for any month; verified 1990 & 2098 → empty), so we choose the window: **from the 1st of the current month through +12 months**. The fetch only ever requests dates ≥ 1st of the current month; events dated before that are never re-fetched. *(One-time exception: a backfill seeds the pre-existing back-catalog — see Phase 3.)*
 
-Each run: fetch → merge into archive (update `last_seen`, mark absentees `removed`, never delete) → regenerate `.ics` from the current live set → commit archive changes.
+### Merge / edit / delete rules
+Per run, compare the fetch (dates ≥ 1st of current month) against the archive:
+- **New / present:** upsert by `uid`; **edits overwrite** the existing record.
+- **Absent, date ≥ 1st of current month:** inside the window, so absence = the owner deleted it → **hard-delete from `data/`** (git history preserves it).
+- **Absent, date < 1st of current month:** outside the window, absence proves nothing → **keep** the record untouched (frozen history).
+
+Each run: fetch → merge/edit/delete per the rules above → regenerate `.ics` from the current fetch window → commit `data/` changes.
 
 ---
 
@@ -55,7 +61,7 @@ Goal: obtain structured events (start/end datetime, title, description, location
 
 - [x] **Reverse-engineer acquisition.** Done — see `.tmp/phase1-findings.md`. `POST /open/data` is a stateless JSON API (no auth); protocol documented above.
 - [x] **Decision: direct `fetch` of `/open/data`.** No headless browser.
-- [ ] Implement the fetcher: build the `keys` blob for a rolling band that always brackets the event span, POST, decode `set` ops into raw events.
+- [ ] Implement the fetcher: build the `keys` blob for the window (1st of current month → +12 months), POST, decode `set` ops into raw events.
 - [ ] Capture a raw fixture (`test/fixtures/`) of a real API response for offline testing.
 - [ ] **Exit criteria:** a documented, repeatable way to get raw event data on demand. _(Approach proven end-to-end via curl; implementation pending Phase 0.)_
 
@@ -71,15 +77,15 @@ Goal: obtain structured events (start/end datetime, title, description, location
 ## Phase 3 — Persistence & archive (durable store)
 
 - [ ] Define the on-disk archive format: per-month JSON under `data/` (`data/{YYYY}-{MM}.json`), records sorted deterministically.
-- [ ] Merge logic: upsert current events by `uid`; set `first_seen` on new, bump `last_seen` on seen; **never delete**.
-- [ ] Removal handling: events in the archive but absent from the current fetch → mark `removed` (with date); keep the record. These are excluded from the `.ics`.
-- [ ] Change handling: if a date's title changes, update the record (decide whether to retain prior title versions).
+- [ ] Merge logic: upsert current events by `uid`; set `first_seen` on new, bump `last_seen` on seen. **Edits overwrite** the existing record.
+- [ ] Delete logic: archived event absent from the fetch **and** dated ≥ 1st of current month → owner deleted it → **hard-remove from `data/`**. Absent **and** dated < 1st of current month → keep untouched. (No tombstone flag — git history is the record.)
+- [ ] **One-time backfill:** a separate seeding run fetches the pre-existing back-catalog (2024-06 → last month) once to populate the archive, then normal runs use the current-month+12 window.
 - [ ] Deterministic serialization (stable key order, sorted records) so unchanged data yields no diff.
-- [ ] Tests for merge/removal/change against fixtures.
+- [ ] Tests for merge/edit/delete (in-window vs. out-of-window) against fixtures.
 
 ## Phase 4 — ICS generation (live set)
 
-- [ ] Generate the `.ics` from the **current live set only** (events present in the latest fetch; excludes `removed`).
+- [ ] Generate the `.ics` from the **current fetch window** (events dated 1st of current month → +12 months present in the latest fetch).
 - [ ] Emit RFC 5545 `.ics` via `ical-generator` with proper `VTIMEZONE` (Asia/Tokyo).
 - [ ] Set calendar metadata: name, description, `X-WR-CALNAME`, refresh interval hint (`REFRESH-INTERVAL`, `X-PUBLISHED-TTL`).
 - [ ] Deterministic output ordering so unchanged data produces a byte-identical file (avoids noisy diffs / needless uploads).
@@ -117,8 +123,8 @@ Goal: obtain structured events (start/end datetime, title, description, location
 
 - Final hosting target: R2 public bucket vs. R2 + Worker/custom domain.
 - Refresh cadence (e.g. every 6h vs. daily) — balance freshness against source load.
-- Whether to retain prior title versions when an event's text is edited (vs. keeping only the latest).
-- ~~Rolling window size~~ → **Resolved: no fixed window.** Source has no hard bound; fetch a rolling band bracketing the event span, publish exactly the live events.
-- ~~Published scope~~ → **Resolved: live mirror.** `.ics` = everything currently on the source; repo archive keeps all events durably, even after removal/expiration.
+- ~~Fetch window~~ → **Resolved: 1st of current month → +12 months.** Fetch only dates ≥ 1st of current month; a one-time backfill seeds the pre-existing back-catalog (2024-06 →).
+- ~~Published scope~~ → **Resolved: live set** = current fetch window; archive preserves past events after they roll out; owner-deletions inside the window are hard-removed from `data/` (git keeps history).
+- ~~Edit handling~~ → **Resolved: overwrite** the existing record.
 - ~~Event modeling~~ → **Resolved: all-day events** (inline showtimes kept in the title text, not modeled as timed events).
 - ~~Whether a headless browser is required~~ → **Resolved: no. Direct stateless API fetch.**
