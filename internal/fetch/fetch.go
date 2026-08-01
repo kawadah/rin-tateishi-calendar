@@ -34,8 +34,8 @@ type Month struct {
 // index returns a monotonic month index for comparison/arithmetic.
 func (m Month) index() int { return m.Year*12 + (m.Month - 1) }
 
-// add returns the month n months after m (n may be negative).
-func (m Month) add(n int) Month {
+// Add returns the month n months after m (n may be negative).
+func (m Month) Add(n int) Month {
 	i := m.index() + n
 	return Month{Year: i / 12, Month: i%12 + 1}
 }
@@ -43,13 +43,13 @@ func (m Month) add(n int) Month {
 // Window returns the fetch window [current month, current month + aheadMonths].
 func Window(now time.Time, aheadMonths int) (from, to Month) {
 	from = Month{Year: now.Year(), Month: int(now.Month())}
-	return from, from.add(aheadMonths)
+	return from, from.Add(aheadMonths)
 }
 
 // monthsBetween returns every month in [from, to] inclusive.
 func monthsBetween(from, to Month) []Month {
 	var out []Month
-	for m := from; m.index() <= to.index(); m = m.add(1) {
+	for m := from; m.index() <= to.index(); m = m.Add(1) {
 		out = append(out, m)
 	}
 	return out

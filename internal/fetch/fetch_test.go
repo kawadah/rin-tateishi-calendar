@@ -18,8 +18,8 @@ func TestMonthAdd(t *testing.T) {
 		{Month{2026, 1}, -1, Month{2025, 12}},
 	}
 	for _, tt := range tests {
-		if got := tt.start.add(tt.n); got != tt.want {
-			t.Errorf("%v.add(%d) = %v, want %v", tt.start, tt.n, got, tt.want)
+		if got := tt.start.Add(tt.n); got != tt.want {
+			t.Errorf("%v.Add(%d) = %v, want %v", tt.start, tt.n, got, tt.want)
 		}
 	}
 }
