@@ -31,12 +31,12 @@ jobs:
       contents: write # to commit the updated data/ archive back
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
       - name: Set up toolchain (mise)
-        uses: jdx/mise-action@v2
+        uses: jdx/mise-action@7e36c90d9ab29c415a2384db3006f3ec8a8cc654 # v4.2.4
 
       - name: Run pipeline (fetch -> archive -> ics)
         run: mise run pipeline
@@ -96,19 +96,19 @@ jobs:
       contents: read
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
       - name: Set up toolchain (mise)
-        uses: jdx/mise-action@v2
+        uses: jdx/mise-action@7e36c90d9ab29c415a2384db3006f3ec8a8cc654 # v4.2.4
 
       - name: Verify protocol
         run: mise run verify-protocol
 
       - name: Upload raw response on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: verify-protocol-failure
           path: verify-protocol-failure.json
