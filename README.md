@@ -6,15 +6,16 @@ A subscribable calendar (`.ics`) of 立石凛 (Rin Tateishi)'s public schedule, 
 
 Add this URL as a calendar subscription:
 
-```
+```text
 https://calendars.seiyuu.app/rin-tateishi/calendar.ics
 ```
 
-_(Goes live after the first publish run.)_
-
-- **Google Calendar:** Other calendars → From URL → paste the link.
-- **Apple Calendar:** File → New Calendar Subscription → paste the link.
-- **Outlook:** Add calendar → Subscribe from web → paste the link.
+- **Apple Calendar:** File → New Calendar Subscription
+  - [Use iCloud calendar subscriptions - Apple Support](https://support.apple.com/en-us/102301)
+- **Google Calendar:** Other calendars → From URL
+  - [Subscribe to someone else's calendar - Computer - Google Calendar Help](https://support.google.com/calendar/answer/37100?hl=en)
+- **Outlook:** Add calendar → Subscribe from web
+  - [Import or subscribe to a calendar in Outlook.com or Outlook on the web | Microsoft Support](https://support.microsoft.com/en-us/outlook/import-or-subscribe-to-a-calendar-in-outlook-com-or-outlook-on-the-web)
 
 The feed refreshes roughly every 6 hours.
 
