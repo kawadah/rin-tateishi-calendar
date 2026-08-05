@@ -5,8 +5,7 @@
 #   Secrets:   CLOUDFLARE_ACCOUNT_ID (your Cloudflare account ID)
 #              CLOUDFLARE_R2_ACCESS_KEY_ID      (R2 S3-compatible access key)
 #              CLOUDFLARE_R2_SECRET_ACCESS_KEY  (R2 S3-compatible secret key)
-#   Variables: R2_BUCKET              (e.g. rin-tateishi-calendar)
-#              R2_OBJECT_KEY          (e.g. calendar.ics)
+# The R2 bucket and object key are hardcoded in the upload job below.
 name: Publish calendar
 
 on:
@@ -104,11 +103,9 @@ jobs:
           : "${AWS_ACCESS_KEY_ID:?set secret CLOUDFLARE_R2_ACCESS_KEY_ID}"
           : "${AWS_SECRET_ACCESS_KEY:?set secret CLOUDFLARE_R2_SECRET_ACCESS_KEY}"
           : "${CLOUDFLARE_ACCOUNT_ID:?set secret CLOUDFLARE_ACCOUNT_ID}"
-          : "${R2_BUCKET:?set repo variable R2_BUCKET}"
-          : "${R2_OBJECT_KEY:?set repo variable R2_OBJECT_KEY}"
 
           endpoint="https://${CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com"
-          target="s3://${R2_BUCKET}/${R2_OBJECT_KEY}"
+          target="s3://seiyuu-calendars-production/rin-tateishi/calendar.ics"
 
           aws s3 cp dist/calendar.ics "$target" --endpoint-url "$endpoint" --cache-control "public, max-age=3600" --content-type "text/calendar; charset=utf-8"
           echo "uploaded ${target}"
@@ -117,8 +114,6 @@ jobs:
           AWS_DEFAULT_REGION: auto
           AWS_SECRET_ACCESS_KEY: ${{ secrets.CLOUDFLARE_R2_SECRET_ACCESS_KEY }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          R2_BUCKET: ${{ vars.R2_BUCKET }}
-          R2_OBJECT_KEY: ${{ vars.R2_OBJECT_KEY }}
 
   # Independent contract canary: detect protocol drift early. Failing here (or a
   # failed publish) emails the repo watchers via GitHub's default notifications.
