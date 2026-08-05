@@ -2,9 +2,11 @@
 # publishes the live .ics to Cloudflare R2.
 #
 # Required GitHub configuration (Settings -> Secrets and variables -> Actions):
-#   Secrets:   CLOUDFLARE_ACCOUNT_ID (your Cloudflare account ID)
+#   Secrets:   UPDATER_APP_PRIVATE_KEY          (GitHub App private key, for the archive commit-back)
+#              CLOUDFLARE_ACCOUNT_ID            (your Cloudflare account ID)
 #              CLOUDFLARE_R2_ACCESS_KEY_ID      (R2 S3-compatible access key)
 #              CLOUDFLARE_R2_SECRET_ACCESS_KEY  (R2 S3-compatible secret key)
+#   Variables: UPDATER_APP_CLIENT_ID            (GitHub App client ID)
 # The R2 bucket and object key are hardcoded in the upload job below.
 name: Publish calendar
 
