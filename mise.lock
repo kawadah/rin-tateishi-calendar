@@ -209,13 +209,6 @@ checksum = "sha256:8a4e35ab0b331c85d73567b12f2a444df187f483e5079ceffa6bda1faa2e7
 url = "https://github.com/koalaman/shellcheck/releases/download/v0.11.0/shellcheck-v0.11.0.zip"
 url_api = "https://api.github.com/repos/koalaman/shellcheck/releases/assets/279056944"
 
-[[tools.wrangler]]
-version = "4.115.0"
-backend = "npm:wrangler"
-
-[tools.wrangler.options]
-allow_builds = '["esbuild", "sharp", "workerd"]'
-
 [[tools.zizmor]]
 version = "1.26.1"
 backend = "aqua:zizmorcore/zizmor"

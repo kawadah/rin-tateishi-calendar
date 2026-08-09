@@ -9,7 +9,6 @@ go = "1.26.4"
 golangci-lint = "2.12.2"
 pinact = "4.1.0"
 shellcheck = "0.11.0"
-wrangler = { version = "4.115.0", allow_builds = ["esbuild", "sharp", "workerd"] }
 zizmor = "1.26.1"
 
 [tasks.build]
