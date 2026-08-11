@@ -1,5 +1,6 @@
 [settings]
 auto_install = false
+lockfile = true
 minimum_release_age = "3d"
 pin = true
 
