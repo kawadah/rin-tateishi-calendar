@@ -73,8 +73,17 @@ Tests use the standard `testing` package with golden fixtures under each package
 
 `/open/data` is undocumented and unversioned. If the canary (`mise run verify-protocol`) fails, follow [docs/reverse-engineering.md](docs/reverse-engineering.md).
 
-## Commits
+## Git
+
+### Branches
+
+- Feature branches: `features/<name>`
+
+### Commits
 
 - Conventional commit messages.
 - Small units, committed as work progresses (not one squashed commit).
-- When merging a branch, use Git's default merge commit.
+- When merging a branch, use Git's default merge commit. Commits therefore land
+  on `main` individually, so each message has to stand on its own — and must
+  make sense to someone who only has this repository, with no reference to
+  paths or repositories outside it.
