@@ -81,9 +81,6 @@ Tests use the standard `testing` package with golden fixtures under each package
 
 ### Commits
 
-- Conventional commit messages.
-- Small units, committed as work progresses (not one squashed commit).
-- When merging a branch, use Git's default merge commit. Commits therefore land
-  on `main` individually, so each message has to stand on its own — and must
-  make sense to someone who only has this repository, with no reference to
-  paths or repositories outside it.
+- Conventional commit messages
+- Commit in reasonable units, in reasonable timeline
+- When merging a branch, use Git's default merge commit
