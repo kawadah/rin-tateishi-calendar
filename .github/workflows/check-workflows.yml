@@ -33,5 +33,5 @@ jobs:
         with:
           install_args: actionlint shellcheck zizmor
 
-      - name: Lint workflows and dependabot
-        run: mise run lint:workflows
+      - name: Check workflows and dependabot
+        run: mise run check:workflows

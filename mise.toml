@@ -44,8 +44,8 @@ run = "go run ./cmd/verify-protocol"
 description = "Locate the data request in a browser HAR export (pass a file path)"
 run = "go run ./cmd/inspect-har"
 
-[tasks."lint:workflows"]
-description = "Lint GitHub Actions workflows + dependabot (actionlint + zizmor)"
+[tasks."check:workflows"]
+description = "Check GitHub Actions workflows + dependabot (actionlint + zizmor)"
 run = ["actionlint", "zizmor .github"]
 
 [tasks."pin:actions"]
