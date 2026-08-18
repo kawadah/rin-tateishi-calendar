@@ -90,12 +90,9 @@ func run(backfill bool) error {
 		return fmt.Errorf("save archive: %w", err)
 	}
 
-	// The .ics carries the live set (current fetch window) plus the synthetic
-	// birthday events, which are feed-only and deliberately never archived.
 	// Backfill just seeds history and does not regenerate the feed.
 	if !backfill {
-		birthdays := event.Birthdays(cfg.Birthday, cfg.BirthdayName, now.Year(), now.Year()+1)
-		if err := writeICS(cfg, event.Sort(slices.Concat(events, birthdays))); err != nil {
+		if err := writeICS(cfg, feedEvents(cfg, events, now)); err != nil {
 			return fmt.Errorf("write ics: %w", err)
 		}
 	}
@@ -107,6 +104,22 @@ func run(backfill bool) error {
 	fmt.Printf("%s: fetched %d events (%04d-%02d..%04d-%02d); archive holds %d records\n",
 		mode, len(events), from.Year, from.Month, to.Year, to.Month, len(records))
 	return nil
+}
+
+// feedEvents composes what the .ics publishes: the live set plus the synthetic
+// birthday events for the current and next calendar year, sorted.
+//
+// It takes live rather than reading it from an outer scope, and returns a new
+// slice, so that the synthetic events cannot reach the archive: the caller
+// merges live into data/ before calling this, and the birthdays exist only in
+// the value returned here. Keeping that separation at a function boundary makes
+// it testable — inlined, it held only by statement order.
+//
+// now must be in the source timezone; the year pair advances every JST New Year
+// along with the fetch window derived from the same clock.
+func feedEvents(cfg config.Config, live []event.Event, now time.Time) []event.Event {
+	birthdays := event.Birthdays(cfg.Birthday, cfg.BirthdayName, now.Year(), now.Year()+1)
+	return event.Sort(slices.Concat(live, birthdays))
 }
 
 func writeICS(cfg config.Config, events []event.Event) error {
