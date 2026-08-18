@@ -25,6 +25,10 @@ type Config struct {
 	Timezone     string
 	RefreshTTL   string
 
+	// Birthday events (synthetic; added to the feed, never archived)
+	BirthdayName string     // name used in the event title
+	Birthday     event.Date // birth date; the age in the title is derived from it
+
 	// Pipeline
 	MonthsAhead int    // live window = [current month, +MonthsAhead]
 	DataDir     string // archive root
@@ -50,6 +54,9 @@ func Default() Config {
 		ProductID:    "-//rin-tateishi-calendar//freecalend mirror//JA",
 		Timezone:     "Asia/Tokyo",
 		RefreshTTL:   "PT6H",
+
+		BirthdayName: "立石凛",
+		Birthday:     event.Date{Year: 2001, Month: 7, Day: 10},
 
 		MonthsAhead: 12,
 		DataDir:     "data",
