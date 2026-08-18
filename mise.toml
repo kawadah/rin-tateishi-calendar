@@ -9,7 +9,7 @@ actionlint = "1"
 go = "1"
 golangci-lint = "2"
 pinact = "4"
-shellcheck = "0.11"
+shellcheck = "0.11" # Used via actionlint
 zizmor = "1"
 
 [tasks.build]
@@ -44,6 +44,14 @@ run = "go run ./cmd/verify-protocol"
 description = "Locate the data request in a browser HAR export (pass a file path)"
 run = "go run ./cmd/inspect-har"
 
-[tasks."lint:workflows"]
-description = "Lint GitHub Actions workflows + dependabot (actionlint + zizmor)"
+[tasks."check:workflows"]
+description = "Check GitHub Actions workflows + dependabot (actionlint + zizmor)"
 run = ["actionlint", "zizmor .github"]
+
+[tasks."pin:actions"]
+description = "Pin GitHub Actions and reusable workflows to commit SHAs"
+run = "pinact run --min-age 3"
+
+[tasks."pin:actions:update"]
+description = "Update pinned GitHub Actions and reusable workflows to the latest versions"
+run = "pinact run --update --min-age 3"

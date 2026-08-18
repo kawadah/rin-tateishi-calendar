@@ -1,11 +1,16 @@
 .*
+mise.local.lock
+mise.local.toml
 
 !.github/
 !.vscode/
 !.gitignore
 
+# Claude Code
 !.claude/
 .claude/worktrees/
+.claude/settings.local.json
+CLAUDE.local.md
 
 # Committed config that would otherwise be caught by the .* rule above
 !.golangci.yml

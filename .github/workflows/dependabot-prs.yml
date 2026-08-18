@@ -12,7 +12,8 @@ jobs:
     name: Fetch metadata
     runs-on: ubuntu-latest
     if: |
-      github.event.pull_request.user.login == 'dependabot[bot]' && github.event.pull_request.head.repo.full_name == github.repository
+      github.event.pull_request.user.login == 'dependabot[bot]' &&
+      github.event.pull_request.head.repo.full_name == github.repository
     permissions:
       pull-requests: read
     outputs:
@@ -24,8 +25,7 @@ jobs:
         id: dependabot-metadata
         uses: dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98 # v3.1.0
 
-  # Auto-merge everything except major bumps (which need manual review) and
-  # direct production dependencies (other than GitHub Actions).
+  # Auto-merge everything except major bumps, which need manual review.
   auto-merge:
     name: Auto-merge
     runs-on: ubuntu-latest
@@ -34,9 +34,7 @@ jobs:
       needs.dependabot-metadata.result == 'success' &&
       needs.dependabot-metadata.outputs.dependency-type != '' &&
       needs.dependabot-metadata.outputs.update-type != '' &&
-      needs.dependabot-metadata.outputs.update-type != 'version-update:semver-major' &&
-      (needs.dependabot-metadata.outputs.dependency-type != 'direct:production' ||
-       needs.dependabot-metadata.outputs.package-ecosystem == 'github-actions')
+      needs.dependabot-metadata.outputs.update-type != 'version-update:semver-major'
     permissions:
       contents: write
       pull-requests: write

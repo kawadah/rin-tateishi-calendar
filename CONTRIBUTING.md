@@ -1,21 +1,34 @@
 # CONTRIBUTING
 
-## mise
+## Setup
 
-- Use mise to add and manage tools
-- Don't use tools outside what's installed via mise. If you need a tool, add it with `mise use` first.
-
-## Development
+Install [mise](https://mise.jdx.dev), then run the following commands:
 
 ```sh
-mise install          # install the pinned Go + golangci-lint
-mise run pipeline     # fetch -> archive (data/) -> dist/calendar.ics
-mise run test         # unit tests
-mise run lint         # golangci-lint
-mise run fmt          # format
+mise trust
+mise install
 ```
 
-Other tasks: `mise run build`, `mise run tidy`, `mise run verify-protocol`, `mise run inspect-har <file.har>`. Run `mise tasks` to list them.
+Use mise to add and manage tools; don't use tools outside what it installs. If you need one, add it with `mise use` first.
+
+## Tasks
+
+| Task | Description |
+| --- | --- |
+| `build` | Compile all packages |
+| `test` | Run the test suite |
+| `lint` | Run golangci-lint |
+| `fmt` | Format the code |
+| `tidy` | Tidy go.mod/go.sum |
+| `pipeline` | Run the full pipeline once (fetch -> archive -> ics) |
+| `verify-protocol` | Contract canary: check the /open/data protocol still decodes |
+| `inspect-har` | Locate the data request in a browser HAR export (pass a file path) |
+| `check:workflows` | Check GitHub Actions workflows + dependabot (actionlint + zizmor) |
+| `pin:actions` | Pin GitHub Actions and reusable workflows to commit SHAs |
+| `pin:actions:update` | Update pinned GitHub Actions and reusable workflows to the latest versions |
+
+Run them with `mise run <task>`. Use `mise tasks` for the current list, or
+`mise tasks info <task>` to see what one runs.
 
 ## How it works
 
@@ -60,8 +73,14 @@ Tests use the standard `testing` package with golden fixtures under each package
 
 `/open/data` is undocumented and unversioned. If the canary (`mise run verify-protocol`) fails, follow [docs/reverse-engineering.md](docs/reverse-engineering.md).
 
-## Commits
+## Git
 
-- Conventional commit messages.
-- Small units, committed as work progresses (not one squashed commit).
-- When merging a branch, use Git's default merge commit.
+### Branches
+
+- Feature branches: `features/<name>`
+
+### Commits
+
+- Conventional commit messages
+- Commit in reasonable units, in reasonable timeline
+- When merging a branch, use Git's default merge commit

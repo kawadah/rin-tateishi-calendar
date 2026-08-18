@@ -3,18 +3,33 @@ version: 2
 updates:
   - package-ecosystem: github-actions
     directory: /
-    schedule:
-      interval: daily
-    cooldown:
-      default-days: 3
     commit-message:
       prefix: ci
-
-  - package-ecosystem: gomod
-    directory: /
-    schedule:
-      interval: daily
     cooldown:
       default-days: 3
+    groups:
+      non-major:
+        patterns: ["*"]
+        update-types: [minor, patch]
+    schedule:
+      interval: daily
+      time: "08:00"
+      timezone: Asia/Tokyo
+
+  # Go modules draw no production/development distinction, so there is no
+  # dev group to split out and no prefix-development to set — Dependabot
+  # supports neither for gomod.
+  - package-ecosystem: gomod
+    directory: /
     commit-message:
       prefix: deps
+    cooldown:
+      default-days: 3
+    groups:
+      non-major:
+        patterns: ["*"]
+        update-types: [minor, patch]
+    schedule:
+      interval: daily
+      time: "08:00"
+      timezone: Asia/Tokyo
