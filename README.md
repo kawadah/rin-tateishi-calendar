@@ -24,6 +24,7 @@ The feed refreshes roughly every 6 hours.
 - Events are **all-day**, dated in Japan time (JST).
 - The source keeps one free-text note per day, so each event's text — including any showtimes (e.g. `13:30、18:30`) and `@venue` — appears in the event title exactly as written.
 - When a day lists several events (separated by a blank line at the source), each becomes its own entry.
+- The birthday (7月10日) is added by this mirror, not the source: `🎂 立石凛の{age}歳の誕生日`, for the current and next year.
 
 ## Attribution
 
