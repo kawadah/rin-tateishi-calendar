@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"time"
 	_ "time/tzdata" // embed the tz database so Asia/Tokyo loads without system tzdata
 
@@ -89,10 +90,12 @@ func run(backfill bool) error {
 		return fmt.Errorf("save archive: %w", err)
 	}
 
-	// The .ics mirrors only the live set (current fetch window); backfill just
-	// seeds history and does not regenerate the feed.
+	// The .ics carries the live set (current fetch window) plus the synthetic
+	// birthday events, which are feed-only and deliberately never archived.
+	// Backfill just seeds history and does not regenerate the feed.
 	if !backfill {
-		if err := writeICS(cfg, events); err != nil {
+		birthdays := event.Birthdays(cfg.Birthday, cfg.BirthdayName, now.Year(), now.Year()+1)
+		if err := writeICS(cfg, event.Sort(slices.Concat(events, birthdays))); err != nil {
 			return fmt.Errorf("write ics: %w", err)
 		}
 	}
