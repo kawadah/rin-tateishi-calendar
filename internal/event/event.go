@@ -118,6 +118,12 @@ func Normalize(raw []decode.RawEvent) []Event {
 			})
 		}
 	}
+	return Sort(events)
+}
+
+// Sort orders events by date, then by UID for a stable tiebreak. It sorts in
+// place and returns the same slice, so callers can wrap a freshly built one.
+func Sort(events []Event) []Event {
 	sort.Slice(events, func(i, j int) bool {
 		if a, b := events[i].Date.ordinal(), events[j].Date.ordinal(); a != b {
 			return a < b

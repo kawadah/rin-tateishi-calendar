@@ -82,3 +82,21 @@ func TestNormalizeMultiEvent(t *testing.T) {
 		t.Errorf("titles = %q, %q", got[0].Title, got[1].Title)
 	}
 }
+
+func TestSort(t *testing.T) {
+	events := []Event{
+		{UID: "b@x", Date: Date{Year: 2026, Month: 7, Day: 10}},
+		{UID: "z@x", Date: Date{Year: 2025, Month: 12, Day: 31}},
+		{UID: "a@x", Date: Date{Year: 2026, Month: 7, Day: 10}},
+	}
+	got := Sort(events)
+	want := []string{"z@x", "a@x", "b@x"} // date first, then UID within a date
+	for i, uid := range want {
+		if got[i].UID != uid {
+			t.Errorf("position %d: got %q, want %q", i, got[i].UID, uid)
+		}
+	}
+	if &got[0] != &events[0] {
+		t.Error("Sort should sort in place and return the same slice")
+	}
+}
