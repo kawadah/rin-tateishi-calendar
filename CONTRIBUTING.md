@@ -40,7 +40,7 @@ fetch /open/data → decode → normalize → merge archive (data/) → render .
 
 - **Fetch** the live window (current month … +12 months) from freecalend's stateless JSON API (see [docs/protocol.md](docs/protocol.md)).
 - **Archive** (`data/{YYYY}-{MM}.json`) — a durable record of every event ever seen, kept even after events roll out of the live window. Owner deletions inside the window are removed; past events are frozen.
-- **`.ics`** mirrors only the live set (the current fetch window); all-day events, dates in `Asia/Tokyo`.
+- **`.ics`** mirrors the live set (the current fetch window) plus the synthetic birthday events, which are never archived; all-day events, dates in `Asia/Tokyo`.
 
 Design rationale and decisions are in [docs/design.md](docs/design.md).
 
@@ -54,7 +54,7 @@ Design rationale and decisions are in [docs/design.md](docs/design.md).
 | `internal/config`        | centralized settings (member, name, window, …) |
 | `internal/fetch`         | `/open/data` client |
 | `internal/decode`        | response → raw events |
-| `internal/event`         | normalize, split multi-event cells, all-day model |
+| `internal/event`         | normalize, split multi-event cells, all-day model, synthetic birthdays |
 | `internal/archive`       | per-month store + merge/delete rules |
 | `internal/ics`           | RFC 5545 feed |
 | `data/`                  | durable event archive |

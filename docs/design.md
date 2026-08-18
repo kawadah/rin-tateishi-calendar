@@ -23,14 +23,6 @@ The project maintains two outputs with different lifecycles:
 
 freecalend imposes no hard viewable bound (the API returns HTTP 200 for any month and is simply empty outside the real event span; verified 1990 and 2098 → empty). We choose the window: **current month through +12 months**. "Now" is computed in `Asia/Tokyo` (not the UTC runner clock) so the window and month rollover match the JST-scheduled runs. A one-time backfill seeds the pre-existing back-catalog (earliest event 2024-07).
 
-### Synthetic events
-
-The birthday (2001-07-10) is not on the source calendar, so it is generated: one all-day event per calendar year, titled `🎂 立石凛の{age}歳の誕生日`, for the current and next year. Both are derived from the same JST "now" as the fetch window, so the pair advances every January with nothing to maintain by hand.
-
-They are injected at feed-render time and **never archived**. `data/` is a record of what freecalend actually served; putting events there that no fetch can return would force the delete rule to tell synthetic records apart from owner deletions, complicating the one rule that can destroy data. Their UIDs are namespaced `birthday-<year>@rin-tateishi-calendar` so they cannot collide with the source's `@freecalend.com` UIDs.
-
-This is why the feed is not strictly bounded by the fetch window: for most of the year the current year's birthday has already passed and sits behind the window start. Keeping it is deliberate — a subscriber looking back at the year should still see it.
-
 ### Merge / edit / delete rules
 
 Each run compares the fetch against the archive, keyed by `uid`:
@@ -40,6 +32,14 @@ Each run compares the fetch against the archive, keyed by `uid`:
 - **Absent, outside the window:** absence proves nothing → keep the record untouched.
 
 Records carry only `uid`, `date`, `title`, and `first_seen`. `last_seen` was dropped: it would churn every run (defeating the no-diff goal) and git history already records liveness.
+
+### Synthetic events
+
+The birthday (2001-07-10) is not on the source calendar, so it is generated: one all-day event per calendar year, titled `🎂 立石凛の{age}歳の誕生日`, for the current and next year. Both are derived from the same JST "now" as the fetch window, so the pair advances every January with nothing to maintain by hand.
+
+They are injected at feed-render time and **never archived**. `data/` is a record of what freecalend actually served; putting events there that no fetch can return would force the delete rule to tell synthetic records apart from owner deletions, complicating the one rule that can destroy data. Their UIDs are namespaced `birthday-<year>@rin-tateishi-calendar` so they cannot collide with the source's `@freecalend.com` UIDs.
+
+This is why the feed is not strictly bounded by the fetch window: for most of the year the current year's birthday has already passed and sits behind the window start. Keeping it is deliberate — a subscriber looking back at the year should still see it.
 
 ## Key decisions
 
