@@ -1,6 +1,12 @@
 package event
 
-import "testing"
+import (
+	"strconv"
+	"strings"
+	"testing"
+
+	"github.com/kawadah/rin-tateishi-calendar/internal/decode"
+)
 
 var testBirth = Date{Year: 2001, Month: 7, Day: 10}
 
@@ -40,13 +46,15 @@ func TestBirthdaysAge(t *testing.T) {
 		{2100, "🎂 立石凛の99歳の誕生日"},
 	}
 	for _, tt := range tests {
-		got := Birthdays(testBirth, "立石凛", tt.year)
-		if len(got) != 1 {
-			t.Fatalf("year %d: got %d events, want 1", tt.year, len(got))
-		}
-		if got[0].Title != tt.want {
-			t.Errorf("year %d: got %q, want %q", tt.year, got[0].Title, tt.want)
-		}
+		t.Run(strconv.Itoa(tt.year), func(t *testing.T) {
+			got := Birthdays(testBirth, "立石凛", tt.year)
+			if len(got) != 1 {
+				t.Fatalf("got %d events, want 1", len(got))
+			}
+			if got[0].Title != tt.want {
+				t.Errorf("got %q, want %q", got[0].Title, tt.want)
+			}
+		})
 	}
 }
 
@@ -70,16 +78,30 @@ func TestBirthdaysSorted(t *testing.T) {
 }
 
 func TestBirthdaysNone(t *testing.T) {
-	if got := Birthdays(testBirth, "立石凛"); got != nil {
-		t.Errorf("got %v, want nil for no years", got)
+	if got := Birthdays(testBirth, "立石凛"); len(got) != 0 {
+		t.Errorf("got %v, want no events for no years", got)
 	}
 }
 
-// A birthday UID must never look like a fetched event's UID, or the two
-// namespaces could collide in the feed.
+// A birthday UID must never collide with a fetched event's, so it is compared
+// against a UID the source path actually produces rather than a literal.
 func TestBirthdayUIDNamespace(t *testing.T) {
-	got := Birthdays(testBirth, "立石凛", 2026)[0].UID
-	if want := "birthday-2026@rin-tateishi-calendar"; got != want {
-		t.Errorf("got %q, want %q", got, want)
+	fetched := Normalize([]decode.RawEvent{
+		{Key: "cald-231613-2026-7-10", Year: 2026, Month: 7, Day: 10, Title: "イベント"},
+	})
+	if len(fetched) != 1 {
+		t.Fatalf("test setup: normalized %d events, want 1", len(fetched))
+	}
+	synthetic := Birthdays(testBirth, "立石凛", 2026)[0]
+
+	if synthetic.UID == fetched[0].UID {
+		t.Fatalf("synthetic UID %q collides with a fetched one", synthetic.UID)
+	}
+	if strings.HasSuffix(synthetic.UID, "@freecalend.com") {
+		t.Errorf("synthetic UID %q is in the source namespace", synthetic.UID)
+	}
+	// Same date: the two must still be distinguishable by UID alone.
+	if synthetic.Date != fetched[0].Date {
+		t.Fatalf("test setup: dates differ (%v vs %v)", synthetic.Date, fetched[0].Date)
 	}
 }

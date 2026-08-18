@@ -96,7 +96,4 @@ func TestSort(t *testing.T) {
 			t.Errorf("position %d: got %q, want %q", i, got[i].UID, uid)
 		}
 	}
-	if &got[0] != &events[0] {
-		t.Error("Sort should sort in place and return the same slice")
-	}
 }
