@@ -1,6 +1,10 @@
 package config
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/kawadah/rin-tateishi-calendar/internal/event"
+)
 
 func TestDefault(t *testing.T) {
 	c := Default()
@@ -9,6 +13,12 @@ func TestDefault(t *testing.T) {
 	}
 	if c.CanaryFrom.Year != 2024 || c.CanaryTo.Year != 2025 {
 		t.Errorf("unexpected canary window %v..%v", c.CanaryFrom, c.CanaryTo)
+	}
+	if want := (event.Date{Year: 2001, Month: 7, Day: 10}); c.Birthday != want {
+		t.Errorf("Birthday = %v, want %v", c.Birthday, want)
+	}
+	if c.BirthdayName != "立石凛" {
+		t.Errorf("BirthdayName = %q, want 立石凛", c.BirthdayName)
 	}
 }
 
